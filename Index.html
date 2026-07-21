@@ -1,0 +1,2030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VRF Pipe Length Measurement Tool — MBT</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --navy:#0b2545; --blue:#1461b0; --blue-light:#e8f1fb; --accent:#e8730a;
+    --gas:#c0392b; --liquid:#1a6fb5; --ok:#1e8e3e; --warn:#c0392b; --border:#d7dee6;
+    --bg:#f4f6f9; --panel:#ffffff; --text:#1c2733; --muted:#6b7686;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--text);background:var(--bg);}
+  #app{display:flex;flex-direction:column;height:100vh;}
+  header{background:var(--navy);color:#fff;padding:8px 14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;z-index:5;}
+  header h1{font-size:15px;margin:0;font-weight:600;letter-spacing:.2px;white-space:nowrap;}
+  header .sub{font-size:11px;color:#b9c8dd;margin-top:1px;}
+  header .grow{flex:1;}
+  .btn{background:var(--blue);color:#fff;border:none;border-radius:5px;padding:6px 11px;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;}
+  .btn:hover{background:#0f4d8c;}
+  .btn.secondary{background:#33507a;}
+  .btn.secondary:hover{background:#28405f;}
+  .btn.accent{background:var(--accent);}
+  .btn.accent:hover{background:#c96209;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .btn.sm{padding:4px 8px;font-size:11.5px;}
+  input[type=file]{display:none;}
+  #main{flex:1;display:flex;min-height:0;}
+  #canvasArea{flex:1;position:relative;overflow:auto;background:#5a6472;display:flex;align-items:flex-start;justify-content:flex-start;}
+  #canvasWrap{position:relative;margin:24px;box-shadow:0 2px 14px rgba(0,0,0,.35);background:#fff;}
+  #canvasWrap canvas{display:block;position:absolute;top:0;left:0;}
+  #overlayCanvas{cursor:crosshair;}
+  #emptyState{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#dfe4ea;text-align:center;padding:20px;}
+  #emptyState .box{background:rgba(255,255,255,.06);border:1px dashed #8592a3;border-radius:10px;padding:34px 40px;}
+  #emptyState h2{margin:0 0 8px;font-size:16px;color:#fff;}
+  #emptyState p{margin:0 0 14px;font-size:12.5px;color:#c7cedb;max-width:340px;}
+  #sidebar{width:400px;min-width:400px;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+  .tabs{display:flex;border-bottom:1px solid var(--border);background:#fafbfc;}
+  .tab{flex:1;text-align:center;padding:9px 4px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;}
+  .tab.active{color:var(--blue);border-bottom-color:var(--blue);background:#fff;}
+  .tabpanel{flex:1;overflow-y:auto;padding:12px;display:none;}
+  .tabpanel.active{display:block;}
+  .card{border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px;background:#fff;}
+  .card h3{margin:0 0 8px;font-size:12.5px;color:var(--navy);text-transform:uppercase;letter-spacing:.4px;}
+  .row{display:flex;gap:6px;align-items:center;margin-bottom:6px;}
+  .row label{font-size:11.5px;color:var(--muted);min-width:118px;}
+  select,input[type=text],input[type=number]{border:1px solid var(--border);border-radius:5px;padding:5px 7px;font-size:12px;width:100%;background:#fff;}
+  .toolgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .tool-btn{border:1px solid var(--border);background:#fff;border-radius:6px;padding:7px 6px;font-size:11.5px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:6px;}
+  .tool-btn .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .tool-btn.active{background:var(--blue-light);border-color:var(--blue);font-weight:600;}
+  .tool-btn:hover{border-color:var(--blue);}
+  .hint{font-size:11px;color:var(--muted);background:#f4f7fb;border-left:3px solid var(--blue);padding:6px 8px;border-radius:4px;margin-top:8px;line-height:1.4;}
+  .systemItem{border:1px solid var(--border);border-radius:7px;margin-bottom:8px;overflow:hidden;}
+  .systemItem .head{padding:7px 9px;background:#f7f9fb;display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
+  .systemItem .head.active{background:var(--blue-light);}
+  .systemItem .head strong{font-size:12.5px;}
+  .systemItem .head .meta{font-size:10.5px;color:var(--muted);}
+  .systemItem .body{padding:8px 9px;font-size:11.5px;display:none;}
+  .systemItem .body.open{display:block;}
+  table.seg{width:100%;border-collapse:collapse;font-size:10.8px;}
+  table.seg th{background:#eef2f7;text-align:left;padding:4px 5px;font-weight:600;color:var(--navy);border-bottom:1px solid var(--border);}
+  table.seg td{padding:4px 5px;border-bottom:1px solid #eef1f4;vertical-align:middle;}
+  table.seg tr:hover{background:#fafcff;}
+  .pill{display:inline-block;padding:1px 6px;border-radius:9px;font-size:9.5px;font-weight:700;color:#fff;}
+  .pill.gas{background:var(--gas);}
+  .pill.liquid{background:var(--liquid);}
+  .lenval{font-variant-numeric:tabular-nums;font-weight:600;}
+  .lenval.missing{color:#b3841b;font-weight:400;font-style:italic;}
+  .small-select{font-size:10px;padding:2px 3px;}
+  .totals{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:11.5px;margin-top:6px;}
+  .totals .k{color:var(--muted);}
+  .totals .v{font-weight:700;text-align:right;}
+  .limitrow{display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:4px 0;border-bottom:1px dashed #e6eaf0;}
+  .limitrow:last-child{border-bottom:none;}
+  .badge-ok{color:var(--ok);font-weight:700;}
+  .badge-bad{color:var(--warn);font-weight:700;}
+  .badge-na{color:#9aa4b2;}
+  .icon-x{cursor:pointer;color:#aab4c0;font-size:12px;padding:0 3px;}
+  .icon-x:hover{color:var(--warn);}
+  #modalOverlay{position:fixed;inset:0;background:rgba(10,20,35,.5);display:none;align-items:center;justify-content:center;z-index:50;}
+  #modalOverlay.open{display:flex;}
+  .modal{background:#fff;border-radius:10px;width:380px;max-width:92vw;padding:16px 18px;box-shadow:0 12px 40px rgba(0,0,0,.3);}
+  .modal h3{margin:0 0 12px;font-size:14px;color:var(--navy);}
+  .modal .field{margin-bottom:10px;}
+  .modal .field label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:3px;}
+  .modal .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;}
+  .modal .choices{display:flex;flex-direction:column;gap:7px;}
+  .modal .choices button{text-align:left;padding:9px 11px;border-radius:6px;border:1px solid var(--border);background:#fafbfc;cursor:pointer;font-size:12.5px;}
+  .modal .choices button:hover{border-color:var(--blue);background:var(--blue-light);}
+  .modal p.msg{font-size:12.5px;color:var(--text);line-height:1.5;margin:0 0 12px;}
+  #zoomCtl{display:flex;align-items:center;gap:4px;background:#153a66;border-radius:6px;padding:2px 4px;}
+  #zoomCtl button{background:none;border:none;color:#fff;width:22px;height:22px;cursor:pointer;font-size:13px;}
+  #zoomCtl span{font-size:11px;color:#cfe0f5;min-width:38px;text-align:center;}
+  #pageNav{display:flex;align-items:center;gap:6px;background:#153a66;border-radius:6px;padding:2px 8px;}
+  #pageNav button{background:none;border:none;color:#fff;cursor:pointer;font-size:13px;}
+  #pageNav span{font-size:11px;color:#cfe0f5;}
+  #floatingBar{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:7px 10px;border-radius:8px;display:none;gap:8px;align-items:center;box-shadow:0 4px 14px rgba(0,0,0,.35);z-index:6;font-size:12px;}
+  #floatingBar.show{display:flex;}
+  #floatingBar button{background:var(--blue);border:none;color:#fff;padding:5px 10px;border-radius:5px;font-size:11.5px;cursor:pointer;}
+  #floatingBar button.cancel{background:#5a6472;}
+  .toast{position:fixed;bottom:18px;right:18px;background:var(--navy);color:#fff;padding:9px 14px;border-radius:7px;font-size:12.5px;box-shadow:0 4px 14px rgba(0,0,0,.3);z-index:80;max-width:340px;}
+  .footnote{font-size:10.5px;color:var(--muted);margin-top:10px;line-height:1.5;}
+  ::-webkit-scrollbar{width:9px;height:9px;}
+  ::-webkit-scrollbar-thumb{background:#c4ccd6;border-radius:5px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div>
+      <h1>VRF Pipe Length Measurement Tool</h1>
+      <div class="sub">Midea Building Technologies · trace gas &amp; liquid refrigerant runs on a mechanical plan, get real lengths in meters</div>
+    </div>
+    <div class="grow"></div>
+    <label class="btn" for="fileInput">📄 Upload Plan PDF</label>
+    <input type="file" id="fileInput" accept="application/pdf">
+    <div id="pageNav" style="display:none;">
+      <button id="prevPage">◀</button>
+      <span id="pageLabel">Page 1 / 1</span>
+      <button id="nextPage">▶</button>
+    </div>
+    <div id="zoomCtl" style="display:none;">
+      <button id="zoomOut">−</button>
+      <span id="zoomLabel">100%</span>
+      <button id="zoomIn">+</button>
+    </div>
+    <button class="btn secondary" id="undoBtn" title="Undo (Ctrl/Cmd+Z)" disabled>↶ Undo</button>
+    <button class="btn secondary" id="redoBtn" title="Redo (Ctrl/Cmd+Shift+Z)" disabled>↷ Redo</button>
+    <button class="btn secondary" id="saveBtn" style="display:none;">💾 Save Session</button>
+    <label class="btn secondary" for="loadInput" style="display:none;" id="loadBtnLabel">📂 Load Session</label>
+    <input type="file" id="loadInput" accept="application/json">
+  </header>
+  <div id="main">
+    <div id="canvasArea">
+      <div id="emptyState">
+        <div class="box">
+          <h2>Start by uploading a VRF mechanical / riser plan (PDF)</h2>
+          <p>Then calibrate the drawing scale, add ODU / Branch / Indoor Unit points, and trace the gas &amp; liquid pipe runs between them. The tool sums traced distances into real-world meters.</p>
+          <label class="btn accent" for="fileInput">Upload PDF to begin</label>
+        </div>
+      </div>
+      <div id="canvasWrap" style="display:none;">
+        <canvas id="pdfCanvas"></canvas>
+        <canvas id="overlayCanvas"></canvas>
+      </div>
+      <div id="floatingBar">
+        <span id="floatingBarText"></span>
+        <button id="floatingUndo">Undo last point (⌫)</button>
+        <button id="floatingFinish">Finish (Enter)</button>
+        <button class="cancel" id="floatingCancel">Cancel (Esc)</button>
+      </div>
+    </div>
+    <div id="sidebar">
+      <div class="tabs">
+        <div class="tab active" data-tab="trace">Trace</div>
+        <div class="tab" data-tab="results">Results</div>
+        <div class="tab" data-tab="limits">Design Limits</div>
+        <div class="tab" data-tab="export">Export</div>
+      </div>
+
+      <div class="tabpanel active" id="tab-trace">
+        <div class="card">
+          <h3>VRF Systems</h3>
+          <div id="systemList"></div>
+          <button class="btn sm" id="addSystemBtn" style="width:100%;justify-content:center;margin-top:4px;">+ New VRF System</button>
+        </div>
+        <div class="card" id="selectionPanel" style="display:none;"></div>
+        <div class="card">
+          <h3>Tools</h3>
+          <div class="toolgrid">
+            <div class="tool-btn" data-tool="select"><span class="dot" style="background:#8592a3;"></span>Select / Pan</div>
+            <div class="tool-btn" data-tool="calibrate"><span class="dot" style="background:#8e44ad;"></span>Calibrate Scale</div>
+            <div class="tool-btn" data-tool="add-odu"><span class="dot" style="background:#16324f;"></span>Add ODU</div>
+            <div class="tool-btn" data-tool="add-branch"><span class="dot" style="background:#e8730a;"></span>Add Branch</div>
+            <div class="tool-btn" data-tool="add-idu"><span class="dot" style="background:#1e8e3e;"></span>Add Indoor Unit</div>
+            <div class="tool-btn" data-tool="trace"><span class="dot" style="background:#1461b0;"></span>Trace Pipe Run</div>
+            <div class="tool-btn" data-tool="delete"><span class="dot" style="background:#c0392b;"></span>Delete Node/Edge</div>
+          </div>
+          <div class="hint" id="toolHint">Upload a plan, then pick "Calibrate Scale" first so measured runs convert to meters.</div>
+          <button class="btn sm" id="linkCrossPageBtn" style="width:100%;justify-content:center;margin-top:6px;" disabled>🔗 Link to Node on Another Page</button>
+        </div>
+        <div class="card">
+          <h3>This Page's Scale</h3>
+          <div id="scaleInfo" style="font-size:11.5px;color:var(--muted);">Not calibrated yet.</div>
+        </div>
+      </div>
+
+      <div class="tabpanel" id="tab-results">
+        <div id="resultsList"></div>
+      </div>
+
+      <div class="tabpanel" id="tab-limits">
+        <div id="limitsPanel"></div>
+      </div>
+
+      <div class="tabpanel" id="tab-export">
+        <div class="card">
+          <h3>Export</h3>
+          <button class="btn" style="width:100%;justify-content:center;margin-bottom:8px;" id="exportExcelBtn">📊 Export Segment Table (.xlsx)</button>
+          <button class="btn secondary" style="width:100%;justify-content:center;margin-bottom:8px;" id="exportPdfBtn">🖨️ Export Annotated Plan (.pdf)</button>
+          <button class="btn secondary" style="width:100%;justify-content:center;" id="exportSummaryBtn">📄 Export Summary Report (.pdf)</button>
+          <div class="footnote">Excel export includes every traced segment (system, from, to, type, traced length, bend count, bend allowance, total length, diameter) plus a per-system summary against the design-limit table. Every reported length already includes +1m per identified bend (elbow/fitting allowance). The annotated PDF export overlays your traced lines, node markers, and length labels onto a copy of the uploaded plan, page by page.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="modalOverlay"><div class="modal" id="modalBox"></div></div>
+<div id="toastRoot"></div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+/* ============================== STATE ============================== */
+const state = {
+  fileName: null,
+  pdfDoc: null,
+  numPages: 1,
+  currentPage: 1,
+  zoom: 1.0,
+  pageViewportBase: null, // {width,height} at scale 1 for current page
+  pageScales: {},   // pageNum -> { unitsPerMeter: number|null, calibA:{x,y}, calibB:{x,y}, refMeters }
+  systems: [],       // {id,name,line,hp,oduCapacityKw,floorHeightM,limits,charge}
+  activeSystemId: null,
+  nodes: [],          // {id, systemId, type, label, x, y, page, floor, capacityKw(IDU only)}
+  edges: [],           // {id, systemId, fromId, toId, page, crossPage, gas:{points,lengthM,diameterMm}, liquid:{points,lengthM,diameterMm}}
+  currentTool: 'select',
+  nextId: 1,
+};
+
+/* ============================== Undo / Redo ============================== */
+let historyStack = [], redoStack = [];
+const HISTORY_LIMIT = 60;
+function snapshotState(){
+  return JSON.stringify({systems:state.systems, nodes:state.nodes, edges:state.edges, pageScales:state.pageScales, activeSystemId:state.activeSystemId});
+}
+function restoreSnapshot(json){
+  const s = JSON.parse(json);
+  state.systems=s.systems; state.nodes=s.nodes; state.edges=s.edges; state.pageScales=s.pageScales; state.activeSystemId=s.activeSystemId;
+}
+// Call BEFORE any mutation to state.systems/nodes/edges/pageScales, so the pre-mutation
+// state can be restored on Undo.
+function pushHistory(){
+  historyStack.push(snapshotState());
+  if(historyStack.length>HISTORY_LIMIT) historyStack.shift();
+  redoStack = [];
+  updateHistoryButtons();
+}
+function updateHistoryButtons(){
+  const u=document.getElementById('undoBtn'), r=document.getElementById('redoBtn');
+  if(u) u.disabled = historyStack.length===0;
+  if(r) r.disabled = redoStack.length===0;
+}
+function afterHistoryChange(){
+  selection=null; traceOp=null; floatingBar.classList.remove('show');
+  updateScaleInfo(); renderSystemList(); renderResults(); renderLimitsPanel(); renderSelectionPanel(); redrawOverlay();
+  updateHistoryButtons(); updateLinkCrossPageBtn();
+}
+function undoAction(){
+  if(historyStack.length===0){ toast('Nothing to undo.'); return; }
+  redoStack.push(snapshotState());
+  restoreSnapshot(historyStack.pop());
+  afterHistoryChange();
+}
+function redoAction(){
+  if(redoStack.length===0){ toast('Nothing to redo.'); return; }
+  historyStack.push(snapshotState());
+  restoreSnapshot(redoStack.pop());
+  afterHistoryChange();
+}
+
+function uid(prefix){ return prefix + (state.nextId++); }
+
+/* ====================== VC MAX reference dataset ===================== */
+// Verified from Midea VC MAX 50/60Hz Engineering Data Book (Part 3: System Design & Installation).
+const VC_MAX_LIMITS = {
+  totalPipingLengthMax: 1100,
+  farthestIduActualMax: 220,
+  farthestIduEquivMax: 260,
+  branchToFarthestIduMax: 40,
+  branchToFarthestIduMaxExtended: 120,
+  oduToOduBranchMax: 10,
+  levelDiffOduIduMax: 110,
+  levelDiffIduIduMax: 40,
+  combinationRatioMin: 50, combinationRatioMax: 130,
+  note: "Piping-length and level-difference limits verified from the Midea VC MAX 50/60Hz Engineering Data Book (Part 3, Section 4.3). The 50–130% combination-ratio range is a typical VRF industry guideline, not confirmed from that document — check it against your own ODU selection data for critical designs."
+};
+const VC_MAX_CHARGE_TABLE = [
+  {od:6.35, factor:0.022}, {od:9.53, factor:0.057}, {od:12.7, factor:0.110},
+  {od:15.9, factor:0.170}, {od:19.1, factor:0.260}, {od:22.2, factor:0.360},
+  {od:25.4, factor:0.520}, {od:28.6, factor:0.680}
+];
+const PIPE_DIAMETERS_MM = [6.35,9.53,12.7,15.9,19.1,22.2,25.4,28.6,31.8,34.9,38.1,41.3,44.5,50.8,54.0,63.5];
+
+// --- VC MAX pipe-sizing tables (Engineering Data Book, Part 3 Section 4.4) ---
+// Table 3-4.5: main pipe (L1) + first indoor branch joint, keyed by total ODU HP and whether
+// equivalent length to the farthest IDU is <90m or >=90m. Verified directly from the source.
+const VCMAX_L1_TABLE = [
+  {hpMax:8,   lt90:{gas:19.1, liq:9.52, kit:'FQZHN-01D'}, ge90:{gas:22.2, liq:12.7, kit:'FQZHN-02D'}},
+  {hpMax:10,  lt90:{gas:22.2, liq:9.52, kit:'FQZHN-02D'}, ge90:{gas:25.4, liq:12.7, kit:'FQZHN-02D'}},
+  {hpMax:14,  lt90:{gas:25.4, liq:12.7, kit:'FQZHN-02D'}, ge90:{gas:28.6, liq:15.9, kit:'FQZHN-03D'}},
+  {hpMax:16,  lt90:{gas:28.6, liq:12.7, kit:'FQZHN-03D'}, ge90:{gas:31.8, liq:15.9, kit:'FQZHN-03D'}},
+  {hpMax:18,  lt90:{gas:28.6, liq:15.9, kit:'FQZHN-03D'}, ge90:{gas:31.8, liq:15.9, kit:'FQZHN-03D'}},
+  {hpMax:24,  lt90:{gas:28.6, liq:15.9, kit:'FQZHN-03D'}, ge90:{gas:31.8, liq:19.1, kit:'FQZHN-03D'}},
+  {hpMax:34,  lt90:{gas:31.8, liq:19.1, kit:'FQZHN-03D'}, ge90:{gas:38.1, liq:22.2, kit:'FQZHN-04D'}},
+  {hpMax:54,  lt90:{gas:38.1, liq:19.1, kit:'FQZHN-04D'}, ge90:{gas:41.3, liq:22.2, kit:'FQZHN-05D'}},
+  {hpMax:66,  lt90:{gas:41.3, liq:19.1, kit:'FQZHN-05D'}, ge90:{gas:44.5, liq:22.2, kit:'FQZHN-05D'}},
+  {hpMax:82,  lt90:{gas:44.5, liq:22.2, kit:'FQZHN-05D'}, ge90:{gas:50.8, liq:25.4, kit:'FQZHN-06D'}},
+  {hpMax:90,  lt90:{gas:50.8, liq:22.2, kit:'FQZHN-06D'}, ge90:{gas:54.0, liq:25.4, kit:'FQZHN-06D'}},
+];
+// Table 3-4.6: indoor main pipes (L2-L10) + branch joint, keyed by downstream "capacity index".
+// NOTE: the book keys this table by a "capacity index" unit, not kW directly. Cross-checking the
+// book's own worked example (branch B serving 5 x 160-index IDUs = 800 -> Φ31.8/Φ19.1/FQZHN-03D,
+// which matches the 710-1040 row) implies capacity index = kW x 10. That x10 factor is *inferred*,
+// not a line Midea states explicitly in the pages captured, so suggestions from this table are
+// flagged "estimated" in the UI - verify against Table 3-4.6 directly for critical designs.
+const VCMAX_INDEX_TO_KW = 10;
+const VCMAX_INDOOR_MAIN_TABLE = [
+  {idxMax:168,  gas:15.9, liq:9.52, kit:'FQZHN-01D'},
+  {idxMax:224,  gas:19.1, liq:9.52, kit:'FQZHN-01D'},
+  {idxMax:330,  gas:22.2, liq:9.52, kit:'FQZHN-02D'},
+  {idxMax:470,  gas:28.6, liq:12.7, kit:'FQZHN-03D'},
+  {idxMax:710,  gas:28.6, liq:15.9, kit:'FQZHN-03D'},
+  {idxMax:1040, gas:31.8, liq:19.1, kit:'FQZHN-03D'},
+  {idxMax:1540, gas:38.1, liq:19.1, kit:'FQZHN-04D'},
+  {idxMax:1900, gas:41.3, liq:19.1, kit:'FQZHN-05D'},
+  {idxMax:2350, gas:44.5, liq:22.2, kit:'FQZHN-05D'},
+  {idxMax:2500, gas:50.8, liq:22.2, kit:'FQZHN-06D'},
+  {idxMax:3024, gas:50.8, liq:25.4, kit:'FQZHN-06D'},
+  {idxMax:Infinity, gas:54.0, liq:28.6, kit:'FQZHN-07D'},
+];
+// Table 3-4.10: indoor auxiliary pipes (branch -> IDU), keyed by that IDU's own capacity (kW).
+// Verified directly from the source.
+const VCMAX_AUX_TABLE = [
+  {kwMax:5.6,  gas:12.7, liq:6.35},
+  {kwMax:16,   gas:15.9, liq:9.52},
+  {kwMax:22.4, gas:19.1, liq:9.52},
+  {kwMax:28,   gas:22.2, liq:12.7},
+  {kwMax:40,   gas:25.4, liq:12.7},
+  {kwMax:56,   gas:28.6, liq:15.9},
+  {kwMax:Infinity, gas:31.8, liq:19.1},
+];
+const BEND_ALLOWANCE_M = 1;          // meters added per identified bend (elbow/fitting allowance)
+const BEND_ANGLE_THRESHOLD_DEG = 15; // direction changes below this are treated as noise, not a real bend
+
+const BLANK_LIMITS = {
+  totalPipingLengthMax:null, farthestIduActualMax:null, farthestIduEquivMax:null,
+  branchToFarthestIduMax:null, branchToFarthestIduMaxExtended:null, oduToOduBranchMax:null,
+  levelDiffOduIduMax:null, levelDiffIduIduMax:null,
+  combinationRatioMin: 50, combinationRatioMax: 130,
+  note:"Engineering data book for this line wasn't available in the working folder — enter the limits from your own reference document."
+};
+
+const LINE_PRESETS = {
+  "VC Max": { limits: JSON.parse(JSON.stringify(VC_MAX_LIMITS)), charge: JSON.parse(JSON.stringify(VC_MAX_CHARGE_TABLE)) },
+  "V8 Pro": { limits: JSON.parse(JSON.stringify(BLANK_LIMITS)), charge: JSON.parse(JSON.stringify(VC_MAX_CHARGE_TABLE.map(c=>({od:c.od,factor:null}))))},
+  "V8S":    { limits: JSON.parse(JSON.stringify(BLANK_LIMITS)), charge: JSON.parse(JSON.stringify(VC_MAX_CHARGE_TABLE.map(c=>({od:c.od,factor:null}))))},
+  "Other / Custom": { limits: JSON.parse(JSON.stringify(BLANK_LIMITS)), charge: JSON.parse(JSON.stringify(VC_MAX_CHARGE_TABLE.map(c=>({od:c.od,factor:null}))))}
+};
+
+/* ============================== DOM refs ============================== */
+const fileInput = document.getElementById('fileInput');
+const canvasAreaEl = document.getElementById('canvasArea');
+canvasAreaEl.title = 'Pan: middle-click drag, or hold Space + drag. Zoom: Ctrl/Cmd + scroll, trackpad pinch, or the +/− buttons above.';
+const canvasWrap = document.getElementById('canvasWrap');
+const emptyState = document.getElementById('emptyState');
+const pdfCanvas = document.getElementById('pdfCanvas');
+const overlayCanvas = document.getElementById('overlayCanvas');
+const octx = overlayCanvas.getContext('2d');
+const pageNav = document.getElementById('pageNav');
+const pageLabel = document.getElementById('pageLabel');
+const zoomCtl = document.getElementById('zoomCtl');
+const zoomLabel = document.getElementById('zoomLabel');
+const floatingBar = document.getElementById('floatingBar');
+const floatingBarText = document.getElementById('floatingBarText');
+const toolHint = document.getElementById('toolHint');
+const scaleInfo = document.getElementById('scaleInfo');
+
+/* ============================== Toast ============================== */
+function toast(msg, ms){
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.getElementById('toastRoot').appendChild(el);
+  setTimeout(()=>el.remove(), ms||2600);
+}
+
+/* ============================== Modal helpers ============================== */
+const modalOverlay = document.getElementById('modalOverlay');
+const modalBox = document.getElementById('modalBox');
+function closeModal(){ modalOverlay.classList.remove('open'); modalBox.innerHTML=''; }
+
+function formModal(title, fields){
+  // fields: [{name,label,type:'text'|'number'|'select',options,default,placeholder}]
+  return new Promise((resolve)=>{
+    let html = `<h3>${title}</h3>`;
+    fields.forEach(f=>{
+      html += `<div class="field"><label>${f.label}</label>`;
+      if(f.type==='select'){
+        html += `<select id="f_${f.name}">` + f.options.map(o=>`<option value="${o.value}" ${o.value===f.default?'selected':''}>${o.label}</option>`).join('') + `</select>`;
+      } else {
+        html += `<input type="${f.type||'text'}" id="f_${f.name}" value="${f.default!==undefined&&f.default!==null?f.default:''}" placeholder="${f.placeholder||''}" ${f.step?`step="${f.step}"`:''}>`;
+      }
+      html += `</div>`;
+    });
+    html += `<div class="actions"><button class="btn secondary" id="modalCancel">Cancel</button><button class="btn" id="modalOk">OK</button></div>`;
+    modalBox.innerHTML = html;
+    modalOverlay.classList.add('open');
+    const firstInput = modalBox.querySelector('input,select');
+    if(firstInput){ firstInput.focus(); if(firstInput.select) firstInput.select(); }
+    function finish(val){ closeModal(); resolve(val); }
+    modalBox.querySelector('#modalCancel').onclick = ()=>finish(null);
+    modalBox.querySelector('#modalOk').onclick = ()=>{
+      const out = {};
+      fields.forEach(f=>{
+        const el = document.getElementById('f_'+f.name);
+        out[f.name] = f.type==='number' ? parseFloat(el.value) : el.value;
+      });
+      finish(out);
+    };
+    modalBox.addEventListener('keydown', (e)=>{
+      if(e.key==='Enter'){ e.preventDefault(); modalBox.querySelector('#modalOk').click(); }
+      if(e.key==='Escape'){ e.preventDefault(); finish(null); }
+    });
+  });
+}
+
+function choiceModal(title, msg, choices){
+  // choices: [{key,label}]
+  return new Promise((resolve)=>{
+    let html = `<h3>${title}</h3>`;
+    if(msg) html += `<p class="msg">${msg}</p>`;
+    html += `<div class="choices">` + choices.map(c=>`<button data-k="${c.key}">${c.label}</button>`).join('') + `</div>`;
+    html += `<div class="actions"><button class="btn secondary" id="modalCancel">Cancel</button></div>`;
+    modalBox.innerHTML = html;
+    modalOverlay.classList.add('open');
+    modalBox.querySelectorAll('.choices button').forEach(b=>{
+      b.onclick = ()=>{ closeModal(); resolve(b.getAttribute('data-k')); };
+    });
+    modalBox.querySelector('#modalCancel').onclick = ()=>{ closeModal(); resolve(null); };
+  });
+}
+
+function confirmModal(title, msg){
+  return new Promise((resolve)=>{
+    modalBox.innerHTML = `<h3>${title}</h3><p class="msg">${msg}</p>
+      <div class="actions"><button class="btn secondary" id="mC">Cancel</button><button class="btn accent" id="mO">Delete</button></div>`;
+    modalOverlay.classList.add('open');
+    modalBox.querySelector('#mC').onclick = ()=>{ closeModal(); resolve(false); };
+    modalBox.querySelector('#mO').onclick = ()=>{ closeModal(); resolve(true); };
+  });
+}
+
+/* ============================== PDF loading & rendering ============================== */
+fileInput.addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  state.fileName = file.name;
+  const buf = await file.arrayBuffer();
+  const loadingTask = pdfjsLib.getDocument({data: buf});
+  try{
+    const doc = await loadingTask.promise;
+    state.pdfDoc = doc;
+    state.numPages = doc.numPages;
+    state.currentPage = 1;
+    state.zoom = 1.0;
+    emptyState.style.display = 'none';
+    canvasWrap.style.display = 'block';
+    pageNav.style.display = 'flex';
+    zoomCtl.style.display = 'flex';
+    document.getElementById('saveBtn').style.display = 'inline-flex';
+    document.getElementById('loadBtnLabel').style.display = 'inline-flex';
+    await renderPage();
+    toast('Plan loaded: ' + file.name + ' (' + state.numPages + ' page' + (state.numPages>1?'s':'') + ')');
+  }catch(err){
+    console.error(err);
+    toast('Could not read that PDF: ' + err.message, 4000);
+  }
+  fileInput.value = '';
+});
+
+async function renderPage(){
+  const page = await state.pdfDoc.getPage(state.currentPage);
+  const baseViewport = page.getViewport({scale:1});
+  state.pageViewportBase = {width: baseViewport.width, height: baseViewport.height};
+  const viewport = page.getViewport({scale: state.zoom});
+  pdfCanvas.width = viewport.width; pdfCanvas.height = viewport.height;
+  overlayCanvas.width = viewport.width; overlayCanvas.height = viewport.height;
+  canvasWrap.style.width = viewport.width+'px';
+  canvasWrap.style.height = viewport.height+'px';
+  const ctx = pdfCanvas.getContext('2d');
+  await page.render({canvasContext: ctx, viewport}).promise;
+  pageLabel.textContent = `Page ${state.currentPage} / ${state.numPages}`;
+  zoomLabel.textContent = Math.round(state.zoom*100)+'%';
+  updateScaleInfo();
+  redrawOverlay();
+}
+
+document.getElementById('prevPage').onclick = async ()=>{
+  if(state.currentPage>1){ state.currentPage--; cancelActiveOp(); await renderPage(); }
+};
+document.getElementById('nextPage').onclick = async ()=>{
+  if(state.currentPage<state.numPages){ state.currentPage++; cancelActiveOp(); await renderPage(); }
+};
+function viewportCenterClient(){
+  const r = canvasAreaEl.getBoundingClientRect();
+  return { x: r.left + r.width/2, y: r.top + r.height/2 };
+}
+document.getElementById('zoomIn').onclick = ()=>{ const c=viewportCenterClient(); setZoomAtClient(state.zoom+0.2, c.x, c.y); };
+document.getElementById('zoomOut').onclick = ()=>{ const c=viewportCenterClient(); setZoomAtClient(state.zoom-0.2, c.x, c.y); };
+document.getElementById('zoomIn').title = 'Zoom in (Ctrl/Cmd + scroll up also works)';
+document.getElementById('zoomOut').title = 'Zoom out (Ctrl/Cmd + scroll down also works)';
+
+/* ---- Zoom to a specific screen point, keeping that drawing point under the cursor ---- */
+async function setZoomAtClient(newZoom, clientX, clientY){
+  if(!state.pdfDoc) return;
+  newZoom = Math.max(0.3, Math.min(4, Math.round(newZoom*100)/100));
+  if(Math.abs(newZoom - state.zoom) < 0.001) return;
+  const areaRect = canvasAreaEl.getBoundingClientRect();
+  const contentX = (clientX - areaRect.left) + canvasAreaEl.scrollLeft;
+  const contentY = (clientY - areaRect.top) + canvasAreaEl.scrollTop;
+  const pagePt = { x: contentX/state.zoom, y: contentY/state.zoom };
+  state.zoom = newZoom;
+  await renderPage();
+  canvasAreaEl.scrollLeft = pagePt.x*state.zoom - (clientX-areaRect.left);
+  canvasAreaEl.scrollTop = pagePt.y*state.zoom - (clientY-areaRect.top);
+}
+
+/* ---- Wheel zoom (Ctrl/Cmd + scroll, or trackpad pinch) ---- */
+canvasAreaEl.addEventListener('wheel', (e)=>{
+  if(!state.pdfDoc) return;
+  if(e.ctrlKey || e.metaKey){
+    e.preventDefault();
+    const factor = Math.exp(-e.deltaY*0.0018);
+    setZoomAtClient(state.zoom*factor, e.clientX, e.clientY);
+  }
+}, {passive:false});
+
+document.getElementById('undoBtn').onclick = undoAction;
+document.getElementById('redoBtn').onclick = redoAction;
+window.addEventListener('keydown', (e)=>{
+  if(e.target.matches('input,textarea,select')) return;
+  if((e.ctrlKey||e.metaKey) && !e.shiftKey && e.key.toLowerCase()==='z'){ e.preventDefault(); undoAction(); }
+  else if((e.ctrlKey||e.metaKey) && (e.shiftKey && e.key.toLowerCase()==='z' || e.key.toLowerCase()==='y')){ e.preventDefault(); redoAction(); }
+});
+
+/* ---- Pan: middle-mouse-button drag, or hold Space + left-drag ---- */
+let isPanning = false, panStart = null, dragMoved = false, spaceHeld = false;
+function cursorForTool(){ return state.currentTool==='select' ? 'default' : 'crosshair'; }
+window.addEventListener('keydown', (e)=>{
+  if(e.code==='Space' && !spaceHeld && !e.target.matches('input,textarea,select')){
+    spaceHeld = true;
+    if(state.pdfDoc && !isPanning) overlayCanvas.style.cursor = 'grab';
+  }
+});
+window.addEventListener('keyup', (e)=>{
+  if(e.code==='Space'){
+    spaceHeld = false;
+    if(!isPanning) overlayCanvas.style.cursor = cursorForTool();
+  }
+});
+let draggingNode = null, dragNodeMoved = false;
+overlayCanvas.addEventListener('mousedown', (e)=>{
+  if(!state.pdfDoc) return;
+  if(e.button===1 || (e.button===0 && spaceHeld)){
+    e.preventDefault();
+    isPanning = true; dragMoved = false;
+    panStart = {x:e.clientX, y:e.clientY, scrollLeft:canvasAreaEl.scrollLeft, scrollTop:canvasAreaEl.scrollTop};
+    overlayCanvas.style.cursor = 'grabbing';
+    return;
+  }
+  if(e.button===0 && state.currentTool==='select'){
+    const rect = overlayCanvas.getBoundingClientRect();
+    const pagePt = canvasToPage(e.clientX-rect.left, e.clientY-rect.top);
+    const n = nodeAt(pagePt);
+    if(n){
+      pushHistory();
+      draggingNode = n; dragNodeMoved = false;
+      overlayCanvas.style.cursor = 'move';
+    }
+  }
+});
+window.addEventListener('mousemove', (e)=>{
+  if(draggingNode){
+    const rect = overlayCanvas.getBoundingClientRect();
+    const pagePt = canvasToPage(e.clientX-rect.left, e.clientY-rect.top);
+    draggingNode.x = pagePt.x; draggingNode.y = pagePt.y;
+    dragNodeMoved = true; dragMoved = true;
+    updateEdgesForMovedNode(draggingNode.id);
+    redrawOverlay();
+    return;
+  }
+  if(!isPanning) return;
+  const dx = e.clientX-panStart.x, dy = e.clientY-panStart.y;
+  if(Math.abs(dx)>3 || Math.abs(dy)>3) dragMoved = true;
+  canvasAreaEl.scrollLeft = panStart.scrollLeft - dx;
+  canvasAreaEl.scrollTop = panStart.scrollTop - dy;
+});
+window.addEventListener('mouseup', ()=>{
+  if(draggingNode){
+    if(dragNodeMoved){ renderResults(); renderSelectionPanel(); }
+    draggingNode = null;
+    overlayCanvas.style.cursor = cursorForTool();
+    return;
+  }
+  if(!isPanning) return;
+  isPanning = false;
+  overlayCanvas.style.cursor = spaceHeld ? 'grab' : cursorForTool();
+});
+
+// Moving a node must also drag along the endpoint of every edge attached to it, and
+// re-sum that segment's length from the updated geometry.
+function updateEdgesForMovedNode(nodeId){
+  const node = state.nodes.find(n=>n.id===nodeId);
+  if(!node) return;
+  state.edges.forEach(e=>{
+    ['gas','liquid'].forEach(kind=>{
+      const seg = e[kind];
+      if(!seg || !seg.points || seg.points.length<2) return;
+      let changed = false;
+      if(e.fromId===nodeId){ seg.points[0] = {x:node.x, y:node.y}; changed = true; }
+      if(e.toId===nodeId){ seg.points[seg.points.length-1] = {x:node.x, y:node.y}; changed = true; }
+      if(changed){
+        let total = 0;
+        for(let i=0;i<seg.points.length-1;i++) total += dist(seg.points[i], seg.points[i+1]);
+        const sc = getScaleObj(e.page);
+        seg.lengthM = sc.unitsPerMeter ? total/sc.unitsPerMeter : null;
+      }
+    });
+  });
+}
+
+/* ============================== Coordinate helpers ============================== */
+// Page-space = PDF points at scale 1 (stable across zoom). Canvas px = page-space * zoom.
+function canvasToPage(cx, cy){ return {x: cx/state.zoom, y: cy/state.zoom}; }
+function pageToCanvas(px, py){ return {x: px*state.zoom, y: py*state.zoom}; }
+function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+
+// Count real direction-change "bends" among a traced polyline's interior points
+// (the from/to node endpoints themselves don't count as bends).
+function countBends(points){
+  if(!points || points.length<3) return 0;
+  let count = 0;
+  for(let i=1;i<points.length-1;i++){
+    const a=points[i-1], b=points[i], c=points[i+1];
+    const v1={x:b.x-a.x,y:b.y-a.y}, v2={x:c.x-b.x,y:c.y-b.y};
+    const len1=Math.hypot(v1.x,v1.y), len2=Math.hypot(v2.x,v2.y);
+    if(len1<1e-6||len2<1e-6) continue;
+    const cos = (v1.x*v2.x+v1.y*v2.y)/(len1*len2);
+    const angleDeg = Math.acos(Math.max(-1,Math.min(1,cos)))*180/Math.PI;
+    if(angleDeg > BEND_ANGLE_THRESHOLD_DEG) count++;
+  }
+  return count;
+}
+function bendCountOf(seg){ return seg && seg.points ? countBends(seg.points) : 0; }
+
+// Drop near-duplicate interior points (e.g. an imprecise click right next to a node) so a
+// stray pixel or two doesn't register as a phantom bend. Always keeps the true first/last point.
+function dedupeClose(points, eps){
+  if(!points || points.length<=2) return points ? points.slice() : [];
+  const first = points[0], last = points[points.length-1];
+  const out = [first];
+  for(let i=1;i<points.length-1;i++){
+    const p = points[i];
+    if(dist(out[out.length-1], p) >= eps && dist(p, last) >= eps) out.push(p);
+  }
+  out.push(last);
+  return out;
+}
+// Effective length = raw traced length + 1m per identified bend.
+function effectiveLen(seg){
+  if(!seg || seg.lengthM==null) return null;
+  return seg.lengthM + bendCountOf(seg)*BEND_ALLOWANCE_M;
+}
+
+function getScaleObj(pageNum){
+  if(!state.pageScales[pageNum]) state.pageScales[pageNum] = {unitsPerMeter:null};
+  return state.pageScales[pageNum];
+}
+function pageLengthToMeters(pageSpaceLength, pageNum){
+  const s = getScaleObj(pageNum);
+  if(!s.unitsPerMeter) return null;
+  return pageSpaceLength / s.unitsPerMeter;
+}
+
+function updateScaleInfo(){
+  const s = getScaleObj(state.currentPage);
+  if(s.unitsPerMeter){
+    scaleInfo.innerHTML = `<b style="color:var(--ok)">Calibrated</b> — ${s.refMeters}m = ${s.unitsPerMeter.toFixed(2)} pt<br><span style="color:var(--muted)">(1m ≈ ${s.unitsPerMeter.toFixed(1)} drawing pt at 100% zoom)</span>`;
+  } else {
+    scaleInfo.innerHTML = 'Not calibrated for this page yet. Use "Calibrate Scale" and click two points a known distance apart (e.g. a dimension line or wall).';
+  }
+}
+
+/* ============================== Tool selection ============================== */
+const toolHints = {
+  'select': 'Click a node or traced line to select it. Scroll the canvas to pan.',
+  'calibrate': 'Click two points on the drawing that are a known real-world distance apart (a dimension line, door width, etc.), then enter that distance.',
+  'add-odu': 'Click on the outdoor unit location to place an ODU marker for the active VRF system.',
+  'add-branch': 'Click on a branch/joint symbol to place a Branch marker for the active VRF system.',
+  'add-idu': 'Click on an indoor unit location to place an IDU marker for the active VRF system.',
+  'trace': 'Click the "From" node, then the "To" node, then click along the pipe route. Press Enter/click Finish when done. Each real direction change (bend) adds +1m to the length automatically, as an elbow/fitting allowance.',
+  'delete': 'Click a node to delete it (and its connected runs), or click a traced line to delete that run.'
+};
+
+document.querySelectorAll('.tool-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const tool = btn.getAttribute('data-tool');
+    if((tool==='add-odu'||tool==='add-branch'||tool==='add-idu'||tool==='trace') && !state.activeSystemId){
+      toast('Create or select a VRF System first.'); return;
+    }
+    if(!state.pdfDoc){ toast('Upload a plan PDF first.'); return; }
+    cancelActiveOp();
+    state.currentTool = tool;
+    document.querySelectorAll('.tool-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    toolHint.textContent = toolHints[tool];
+    overlayCanvas.style.cursor = tool==='select' ? 'default' : 'crosshair';
+  });
+});
+
+/* ============================== Systems ============================== */
+document.getElementById('addSystemBtn').onclick = async ()=>{
+  const res = await formModal('New VRF System', [
+    {name:'name', label:'System / ODU tag (e.g. ODU-1, VRF-01)', type:'text', default:'VRF-' + (state.systems.length+1)},
+    {name:'line', label:'Outdoor unit product line', type:'select', options:[
+      {value:'VC Max', label:'VC Max'}, {value:'V8 Pro', label:'V8 Pro'}, {value:'V8S', label:'V8S'}, {value:'Other / Custom', label:'Other / Custom'}
+    ], default:'VC Max'},
+    {name:'hp', label:'ODU capacity (HP)', type:'number', default:''},
+    {name:'oduCapacityKw', label:'ODU nominal capacity (kW) — optional', type:'number', default:'', step:'0.1'}
+  ]);
+  if(!res || !res.name) return;
+  pushHistory();
+  const sys = {id: uid('sys'), name: res.name, line: res.line, hp: res.hp || null,
+    oduCapacityKw: (res.oduCapacityKw && !isNaN(res.oduCapacityKw)) ? res.oduCapacityKw : null, floorHeightM: 3.2,
+    limits: JSON.parse(JSON.stringify(LINE_PRESETS[res.line].limits)),
+    charge: JSON.parse(JSON.stringify(LINE_PRESETS[res.line].charge))};
+  state.systems.push(sys);
+  state.activeSystemId = sys.id;
+  renderSystemList(); renderResults(); renderLimitsPanel();
+  toast('VRF System "'+sys.name+'" created and set active.');
+};
+
+function renderSystemList(){
+  const wrap = document.getElementById('systemList');
+  if(state.systems.length===0){ wrap.innerHTML = '<div style="font-size:11.5px;color:var(--muted);">No systems yet.</div>'; return; }
+  wrap.innerHTML = '';
+  state.systems.forEach(sys=>{
+    const nodeCount = state.nodes.filter(n=>n.systemId===sys.id).length;
+    const edgeCount = state.edges.filter(e=>e.systemId===sys.id).length;
+    const div = document.createElement('div');
+    div.className = 'systemItem';
+    div.innerHTML = `<div class="head ${sys.id===state.activeSystemId?'active':''}">
+        <div><strong>${sys.name}</strong><div class="meta">${sys.line}${sys.hp?(' · '+sys.hp+'HP'):''} · ${nodeCount} nodes, ${edgeCount} runs</div></div>
+        <div><span class="icon-x" data-act="dup" title="Duplicate system">⧉</span> <span class="icon-x" data-act="del" title="Delete system">✕</span></div>
+      </div>`;
+    div.querySelector('.head').addEventListener('click', (e)=>{
+      if(e.target.getAttribute('data-act')==='del' || e.target.getAttribute('data-act')==='dup') return;
+      state.activeSystemId = sys.id;
+      renderSystemList();
+    });
+    div.querySelector('[data-act=dup]').addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      await duplicateSystem(sys);
+    });
+    div.querySelector('[data-act=del]').addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      const ok = await confirmModal('Delete VRF System', `Delete "${sys.name}" and all its nodes/traced runs? (You can Ctrl+Z to undo.)`);
+      if(!ok) return;
+      pushHistory();
+      const nodeIds = new Set(state.nodes.filter(n=>n.systemId===sys.id).map(n=>n.id));
+      state.nodes = state.nodes.filter(n=>n.systemId!==sys.id);
+      state.edges = state.edges.filter(ed=>ed.systemId!==sys.id);
+      state.systems = state.systems.filter(s=>s.id!==sys.id);
+      if(state.activeSystemId===sys.id) state.activeSystemId = state.systems[0]?state.systems[0].id:null;
+      renderSystemList(); renderResults(); renderLimitsPanel(); redrawOverlay();
+    });
+    wrap.appendChild(div);
+  });
+}
+
+async function duplicateSystem(sourceSys){
+  const srcNodes = state.nodes.filter(n=>n.systemId===sourceSys.id);
+  if(srcNodes.length===0){ toast('Add at least one node before duplicating this system.'); return; }
+  const srcPage = srcNodes[0].page;
+  const res = await formModal('Duplicate "'+sourceSys.name+'"', [
+    {name:'name', label:'New system name', type:'text', default: sourceSys.name+' (copy)'},
+    {name:'page', label:'Place the copy on page #', type:'number', default: state.currentPage, step:'1'}
+  ]);
+  if(!res || !res.name) return;
+  pushHistory();
+  const targetPage = Math.min(state.numPages||1, Math.max(1, Math.round(res.page)||state.currentPage));
+  const samePage = targetPage===srcPage;
+  const offset = samePage ? 40 : 0; // nudge so a same-page copy doesn't sit exactly on top of the original
+  const newSys = {id: uid('sys'), name: res.name, line: sourceSys.line, hp: sourceSys.hp,
+    oduCapacityKw: sourceSys.oduCapacityKw, floorHeightM: sourceSys.floorHeightM,
+    limits: JSON.parse(JSON.stringify(sourceSys.limits)), charge: JSON.parse(JSON.stringify(sourceSys.charge))};
+  state.systems.push(newSys);
+  const idMap = {};
+  srcNodes.forEach(n=>{
+    const nn = {id: uid('n'), systemId:newSys.id, type:n.type, label:n.label, x:n.x+offset, y:n.y+offset,
+      page:targetPage, floor:n.floor, capacityKw:n.capacityKw};
+    idMap[n.id] = nn.id;
+    state.nodes.push(nn);
+  });
+  state.edges.filter(e=>e.systemId===sourceSys.id).forEach(e=>{
+    const cloneSeg = (seg)=> seg ? {points:(seg.points||[]).map(p=>({x:p.x+offset,y:p.y+offset})), lengthM:seg.lengthM, diameterMm:seg.diameterMm} : null;
+    state.edges.push({id: uid('e'), systemId:newSys.id, fromId:idMap[e.fromId], toId:idMap[e.toId],
+      page:targetPage, crossPage:e.crossPage||false, gas:cloneSeg(e.gas), liquid:cloneSeg(e.liquid)});
+  });
+  state.activeSystemId = newSys.id;
+  renderSystemList(); renderResults(); renderLimitsPanel(); redrawOverlay();
+  toast('Duplicated as "'+newSys.name+'" on page '+targetPage+ (samePage?' (nudged so it doesn\'t overlap the original)':'') +'. Lengths were copied from the source — recalibrate/re-check if this sheet uses a different scale.', 4200);
+}
+
+/* ============================== Canvas interaction ============================== */
+let calibPoints = [];
+let traceOp = null; // {fromId, toId, points:[pagespace...], kind pending}
+let selection = null; // {type:'node'|'edge', id}
+
+function cancelActiveOp(){
+  calibPoints = [];
+  traceOp = null;
+  floatingBar.classList.remove('show');
+  redrawOverlay();
+  updateLinkCrossPageBtn();
+}
+function updateLinkCrossPageBtn(){
+  const btn = document.getElementById('linkCrossPageBtn');
+  btn.disabled = !(traceOp && !traceOp.toId);
+}
+
+function nodeAt(pagePt, thresholdPagePx){
+  thresholdPagePx = thresholdPagePx || (10/state.zoom);
+  let best=null, bestD=Infinity;
+  state.nodes.filter(n=>n.page===state.currentPage).forEach(n=>{
+    const d = dist(n, pagePt);
+    if(d<thresholdPagePx && d<bestD){ best=n; bestD=d; }
+  });
+  return best;
+}
+
+function edgeAt(pagePt, thresholdPagePx){
+  thresholdPagePx = thresholdPagePx || (7/state.zoom);
+  let best=null, bestD=Infinity;
+  state.edges.filter(e=>e.page===state.currentPage).forEach(e=>{
+    ['gas','liquid'].forEach(kind=>{
+      const seg = e[kind];
+      if(!seg || !seg.points || seg.points.length<2) return;
+      for(let i=0;i<seg.points.length-1;i++){
+        const d = distToSegment(pagePt, seg.points[i], seg.points[i+1]);
+        if(d<thresholdPagePx && d<bestD){ best={edge:e, kind}; bestD=d; }
+      }
+    });
+  });
+  return best;
+}
+function distToSegment(p, a, b){
+  const l2 = (a.x-b.x)**2 + (a.y-b.y)**2;
+  if(l2===0) return dist(p,a);
+  let t = ((p.x-a.x)*(b.x-a.x)+(p.y-a.y)*(b.y-a.y))/l2;
+  t = Math.max(0, Math.min(1, t));
+  return dist(p, {x:a.x+t*(b.x-a.x), y:a.y+t*(b.y-a.y)});
+}
+
+overlayCanvas.addEventListener('click', async (e)=>{
+  if(dragMoved){ dragMoved = false; return; } // suppress the click that follows a pan-drag
+  const rect = overlayCanvas.getBoundingClientRect();
+  const cx = e.clientX-rect.left, cy = e.clientY-rect.top;
+  const pagePt = canvasToPage(cx, cy);
+
+  if(state.currentTool==='calibrate'){
+    calibPoints.push(pagePt);
+    redrawOverlay();
+    if(calibPoints.length===2){
+      const pxDist = dist(calibPoints[0], calibPoints[1]);
+      const res = await formModal('Calibrate Scale', [
+        {name:'meters', label:'Real-world distance between the two points (meters)', type:'number', default:'', step:'0.01', placeholder:'e.g. 3.0'}
+      ]);
+      if(res && res.meters>0){
+        state.pageScales[state.currentPage] = {unitsPerMeter: pxDist/res.meters, refMeters: res.meters, calibA: calibPoints[0], calibB: calibPoints[1]};
+        toast('Scale set for page '+state.currentPage+': '+res.meters+'m calibrated.');
+        updateScaleInfo();
+        renderResults();
+      }
+      calibPoints = [];
+      redrawOverlay();
+    }
+    return;
+  }
+
+  if(state.currentTool==='add-odu' || state.currentTool==='add-branch' || state.currentTool==='add-idu'){
+    const typeMap = {'add-odu':'ODU','add-branch':'BRANCH','add-idu':'IDU'};
+    const type = typeMap[state.currentTool];
+    const defaultLabel = type + '-' + (state.nodes.filter(n=>n.systemId===state.activeSystemId && n.type===type).length + 1);
+    const fields = [{name:'label', label:'Label', type:'text', default:defaultLabel}];
+    if(type==='IDU') fields.push({name:'capacityKw', label:'IDU capacity (kW) — optional', type:'number', default:'', step:'0.1'});
+    fields.push({name:'floor', label:'Floor / level number — optional', type:'number', default:'', step:'1'});
+    const res = await formModal('Label this '+type, fields);
+    if(!res) return;
+    pushHistory();
+    const node = {id: uid('n'), systemId: state.activeSystemId, type, label: res.label||defaultLabel, x: pagePt.x, y: pagePt.y, page: state.currentPage,
+      floor: (res.floor!==undefined && !isNaN(res.floor)) ? res.floor : null,
+      capacityKw: (type==='IDU' && !isNaN(res.capacityKw)) ? res.capacityKw : null};
+    state.nodes.push(node);
+    redrawOverlay(); renderSystemList(); renderResults();
+    return;
+  }
+
+  if(state.currentTool==='trace'){
+    if(!traceOp){
+      const n = nodeAt(pagePt);
+      if(!n){ toast('Click on an existing node to start the trace.'); return; }
+      if(n.systemId !== state.activeSystemId){ toast('That node belongs to a different VRF system. Switch the active system or pick a node from "'+state.systems.find(s=>s.id===state.activeSystemId).name+'".'); return; }
+      traceOp = {fromId:n.id, toId:null, points:[]};
+      updateLinkCrossPageBtn();
+      toast('Now click the destination node (or use "Link to Node on Another Page" in the Tools card).');
+      return;
+    }
+    if(!traceOp.toId){
+      const n = nodeAt(pagePt);
+      if(!n){ toast('Click on the destination node.'); return; }
+      if(n.id===traceOp.fromId){ toast('Pick a different node than the start.'); return; }
+      traceOp.toId = n.id;
+      traceOp.points = [];
+      floatingBar.classList.add('show');
+      updateTraceBarText();
+      updateLinkCrossPageBtn();
+      toast('Click along the pipe route (as many points as needed), then press Enter or click Finish.');
+      return;
+    }
+    // drawing polyline points — reject a click that's basically on top of the previous one
+    // (avoids a phantom "bend" from an imprecise double-click)
+    const lastPt = traceOp.points.length ? traceOp.points[traceOp.points.length-1] : state.nodes.find(n=>n.id===traceOp.fromId);
+    if(lastPt && dist(lastPt, pagePt) < (3/state.zoom)){
+      toast('That point is basically on top of the last one — click a bit farther along the pipe.');
+      return;
+    }
+    traceOp.points.push(pagePt);
+    updateTraceBarText();
+    redrawOverlay();
+    return;
+  }
+
+  if(state.currentTool==='select'){
+    const n = nodeAt(pagePt);
+    if(n){ selection = {type:'node', id:n.id}; redrawOverlay(); renderSelectionPanel(); showNodeInfo(n); return; }
+    const eHit = edgeAt(pagePt);
+    if(eHit){ selection = {type:'edge', id:eHit.edge.id}; redrawOverlay(); renderSelectionPanel(); return; }
+    selection = null; redrawOverlay(); renderSelectionPanel();
+    return;
+  }
+
+  if(state.currentTool==='delete'){
+    const n = nodeAt(pagePt);
+    if(n){
+      const ok = await confirmModal('Delete node', `Delete "${n.label}" and any pipe runs connected to it? (Ctrl+Z to undo.)`);
+      if(!ok) return;
+      pushHistory();
+      state.edges = state.edges.filter(ed=>ed.fromId!==n.id && ed.toId!==n.id);
+      state.nodes = state.nodes.filter(nn=>nn.id!==n.id);
+      redrawOverlay(); renderSystemList(); renderResults();
+      return;
+    }
+    const eHit = edgeAt(pagePt);
+    if(eHit){
+      const ok = await confirmModal('Delete pipe run', `Delete this ${eHit.kind} run between the two nodes? (Ctrl+Z to undo.)`);
+      if(!ok) return;
+      pushHistory();
+      eHit.edge[eHit.kind] = null;
+      if(!eHit.edge.gas && !eHit.edge.liquid){ state.edges = state.edges.filter(e=>e.id!==eHit.edge.id); }
+      redrawOverlay(); renderResults();
+      return;
+    }
+  }
+});
+
+document.getElementById('floatingFinish').onclick = finishTrace;
+document.getElementById('floatingCancel').onclick = cancelActiveOp;
+document.getElementById('floatingUndo').onclick = undoLastTracePoint;
+document.getElementById('linkCrossPageBtn').onclick = async ()=>{
+  if(!traceOp || traceOp.toId){ toast('Click a "From" node with the Trace tool first, then use this to link across pages.'); return; }
+  const candidates = state.nodes.filter(n=>n.systemId===state.activeSystemId && n.id!==traceOp.fromId && n.page!==state.currentPage);
+  if(candidates.length===0){ toast('No nodes on other pages for this system yet — switch to that page and add one first.'); return; }
+  const res = await formModal('Link to a Node on Another Page', [
+    {name:'nodeId', label:'Target node', type:'select', default: candidates[0].id,
+      options: candidates.map(n=>({value:n.id, label:'Page '+n.page+' — '+n.type+' "'+n.label+'"'}))}
+  ]);
+  if(!res){ return; }
+  const toNode = state.nodes.find(n=>n.id===res.nodeId);
+  const fromNode = state.nodes.find(n=>n.id===traceOp.fromId);
+  let defaultLen = '';
+  const sys = state.systems.find(s=>s.id===state.activeSystemId);
+  if(sys && sys.floorHeightM && fromNode.floor!=null && toNode.floor!=null){
+    defaultLen = (Math.abs(toNode.floor-fromNode.floor)*sys.floorHeightM).toFixed(1);
+  }
+  const lenRes = await formModal('Connecting Length', [
+    {name:'meters', label:'Length for this cross-page run (meters)'+(defaultLen?' — suggested from floor height':''), type:'number', default:defaultLen, step:'0.01'}
+  ]);
+  if(!lenRes || isNaN(lenRes.meters)){ cancelActiveOp(); return; }
+  const kind = await choiceModal('This connection represents…', '', [
+    {key:'both', label:'Both gas & liquid line (same length)'},
+    {key:'gas', label:'Gas line only'},
+    {key:'liquid', label:'Liquid line only'}
+  ]);
+  if(!kind){ cancelActiveOp(); return; }
+  pushHistory();
+  const segBase = {points:[{x:fromNode.x,y:fromNode.y},{x:toNode.x,y:toNode.y}], lengthM:lenRes.meters, diameterMm:null};
+  const edge = {id: uid('e'), systemId: state.activeSystemId, fromId: fromNode.id, toId: toNode.id, page: fromNode.page, crossPage:true, gas:null, liquid:null};
+  if(kind==='both'){ edge.gas={...segBase}; edge.liquid={...segBase}; }
+  else if(kind==='gas'){ edge.gas=segBase; } else { edge.liquid=segBase; }
+  state.edges.push(edge);
+  traceOp = null; updateLinkCrossPageBtn();
+  redrawOverlay(); renderResults();
+  toast('Linked '+fromNode.label+' (page '+fromNode.page+') → '+toNode.label+' (page '+toNode.page+'), '+lenRes.meters+'m.');
+};
+document.addEventListener('keydown', (e)=>{
+  if(!traceOp || !traceOp.toId) return;
+  if(e.key==='Enter'){ e.preventDefault(); finishTrace(); }
+  if(e.key==='Escape'){ e.preventDefault(); cancelActiveOp(); }
+  if(e.key==='Backspace'){ e.preventDefault(); undoLastTracePoint(); }
+});
+
+function undoLastTracePoint(){
+  if(!traceOp || !traceOp.toId) return;
+  if(traceOp.points.length===0){ toast('No waypoints to undo yet — Cancel (Esc) to abandon this trace instead.'); return; }
+  traceOp.points.pop();
+  updateTraceBarText();
+  redrawOverlay();
+}
+
+// The exact point sequence finishTrace() will use: from-node -> clicked waypoints -> to-node,
+// with near-duplicate points (e.g. an imprecise click right next to a node) collapsed out so
+// they can't register as a phantom bend. Shared by the live counter and the final save.
+function currentTracePoints(){
+  const fromNode = state.nodes.find(n=>n.id===traceOp.fromId);
+  const toNode = state.nodes.find(n=>n.id===traceOp.toId);
+  const raw = [ {x:fromNode.x,y:fromNode.y}, ...traceOp.points, {x:toNode.x,y:toNode.y} ];
+  return dedupeClose(raw, 3/state.zoom);
+}
+
+function updateTraceBarText(){
+  if(!traceOp || !traceOp.toId) return;
+  const pts = currentTracePoints();
+  const bends = countBends(pts);
+  const n = traceOp.points.length;
+  floatingBarText.textContent = `Tracing… ${n} waypoint${n===1?'':'s'} clicked · ${bends} bend${bends===1?'':'s'} so far. Click Finish when the route matches the pipe.`;
+}
+
+async function finishTrace(){
+  if(!traceOp || !traceOp.toId){ return; }
+  const fullPoints = currentTracePoints();
+  let total = 0;
+  for(let i=0;i<fullPoints.length-1;i++) total += dist(fullPoints[i], fullPoints[i+1]);
+  const s = getScaleObj(state.currentPage);
+  if(!s.unitsPerMeter){
+    toast('This page isn\'t calibrated yet — trace saved, but length will show as "—" until you calibrate the scale.', 3600);
+  }
+  const lengthM = s.unitsPerMeter ? total/s.unitsPerMeter : null;
+  const bends = countBends(fullPoints);
+
+  // Re-tracing one specific line of an already-selected run (from the Selected Run panel) —
+  // skip the gas/liquid/both prompt and just update that one segment in place.
+  if(traceOp.retraceEdgeId){
+    const kindKey = traceOp.forceKind;
+    pushHistory();
+    const edge = state.edges.find(e=>e.id===traceOp.retraceEdgeId);
+    if(edge){
+      const prevDia = edge[kindKey] ? edge[kindKey].diameterMm : null;
+      edge[kindKey] = {points: fullPoints, lengthM, diameterMm: prevDia};
+    }
+    traceOp = null; floatingBar.classList.remove('show'); updateLinkCrossPageBtn();
+    redrawOverlay(); renderResults(); renderSelectionPanel();
+    toast('Updated the '+kindKey+' route'+(lengthM!=null?' — '+(lengthM+bends*BEND_ALLOWANCE_M).toFixed(2)+' m total.':'.'));
+    return;
+  }
+
+  let traceMsg = '';
+  if(lengthM!==null){
+    traceMsg = 'Traced length: <b>'+lengthM.toFixed(2)+' m</b>';
+    if(bends>0){
+      traceMsg += ' + '+bends+' bend'+(bends>1?'s':'')+' × '+BEND_ALLOWANCE_M+'m = <b>'+(lengthM+bends*BEND_ALLOWANCE_M).toFixed(2)+' m total</b>';
+    }
+  }
+  const kind = await choiceModal('Save this traced run as…', traceMsg, [
+    {key:'both', label:'Both gas & liquid line (same route/length)'},
+    {key:'gas', label:'Gas line only'},
+    {key:'liquid', label:'Liquid line only'}
+  ]);
+  if(!kind){ traceOp=null; floatingBar.classList.remove('show'); updateLinkCrossPageBtn(); redrawOverlay(); return; }
+  pushHistory();
+
+  let edge = state.edges.find(e=>e.systemId===state.activeSystemId &&
+    ((e.fromId===traceOp.fromId && e.toId===traceOp.toId) || (e.fromId===traceOp.toId && e.toId===traceOp.fromId)));
+  if(!edge){
+    edge = {id: uid('e'), systemId: state.activeSystemId, fromId: traceOp.fromId, toId: traceOp.toId, page: state.currentPage, gas:null, liquid:null};
+    state.edges.push(edge);
+  }
+  const prevDiameter = {gas: edge.gas?edge.gas.diameterMm:null, liquid: edge.liquid?edge.liquid.diameterMm:null};
+  const segData = {points: fullPoints, lengthM, diameterMm: null};
+  if(kind==='both'){
+    edge.gas = {...JSON.parse(JSON.stringify(segData)), diameterMm: prevDiameter.gas};
+    edge.liquid = {...JSON.parse(JSON.stringify(segData)), diameterMm: prevDiameter.liquid};
+  }
+  else if(kind==='gas'){ edge.gas = {...segData, diameterMm: prevDiameter.gas}; }
+  else if(kind==='liquid'){ edge.liquid = {...segData, diameterMm: prevDiameter.liquid}; }
+
+  traceOp=null; floatingBar.classList.remove('show'); updateLinkCrossPageBtn();
+  redrawOverlay(); renderResults();
+
+  if(kind!=='both'){
+    const other = kind==='gas' ? 'liquid' : 'gas';
+    const addOther = await choiceModal('Trace the '+other+' line too?', 'You can trace it along a different path, reuse the same path/length, or skip it for now.', [
+      {key:'same', label:'Use the same path & length'},
+      {key:'trace', label:'Trace it separately now'},
+      {key:'skip', label:'Skip for now'}
+    ]);
+    if(addOther==='same'){
+      pushHistory();
+      edge[other] = {...JSON.parse(JSON.stringify(segData)), diameterMm: prevDiameter[other]};
+      renderResults(); redrawOverlay();
+    } else if(addOther==='trace'){
+      traceOp = {fromId: edge.fromId, toId: edge.toId, points:[]};
+      floatingBar.classList.add('show');
+      updateTraceBarText();
+    }
+  }
+}
+
+function showNodeInfo(n){
+  toast(n.type+' — "'+n.label+'"'+(n.type==='IDU'&&n.capacityKw?' · '+n.capacityKw+'kW':'')+(n.floor!=null?' · Floor '+n.floor:''));
+}
+
+// Double-click a node (Select tool) to edit its label / IDU capacity / floor level.
+overlayCanvas.addEventListener('dblclick', async (e)=>{
+  if(state.currentTool!=='select') return;
+  const rect = overlayCanvas.getBoundingClientRect();
+  const pagePt = canvasToPage(e.clientX-rect.left, e.clientY-rect.top);
+  const n = nodeAt(pagePt);
+  if(!n) return;
+  const fields = [{name:'label', label:'Label', type:'text', default:n.label}];
+  if(n.type==='IDU') fields.push({name:'capacityKw', label:'IDU capacity (kW)', type:'number', default:n.capacityKw??'', step:'0.1'});
+  fields.push({name:'floor', label:'Floor / level number', type:'number', default:n.floor??'', step:'1'});
+  const res = await formModal('Edit '+n.type, fields);
+  if(!res) return;
+  pushHistory();
+  n.label = res.label || n.label;
+  if(n.type==='IDU') n.capacityKw = (res.capacityKw!==undefined && !isNaN(res.capacityKw) && res.capacityKw!=='') ? res.capacityKw : null;
+  n.floor = (res.floor!==undefined && !isNaN(res.floor) && res.floor!=='') ? res.floor : null;
+  redrawOverlay(); renderSystemList(); renderResults();
+});
+
+/* ---- Selected Run panel: re-trace just one line of an already-traced segment ---- */
+function renderSelectionPanel(){
+  const el = document.getElementById('selectionPanel');
+  if(!selection || selection.type!=='edge'){ el.style.display='none'; el.innerHTML=''; return; }
+  const edge = state.edges.find(e=>e.id===selection.id);
+  if(!edge){ el.style.display='none'; el.innerHTML=''; return; }
+  const fromN = state.nodes.find(n=>n.id===edge.fromId), toN = state.nodes.find(n=>n.id===edge.toId);
+  if(!fromN||!toN){ el.style.display='none'; return; }
+  el.style.display='block';
+  el.innerHTML = `<h3>Selected Run</h3>
+    <div style="font-size:12px;margin-bottom:8px;">${fromN.label} → ${toN.label}</div>
+    <div class="toolgrid">
+      <div class="tool-btn" id="retraceGasBtn" style="justify-content:center;">${edge.gas?'Re-trace Gas':'Trace Gas'}</div>
+      <div class="tool-btn" id="retraceLiquidBtn" style="justify-content:center;">${edge.liquid?'Re-trace Liquid':'Trace Liquid'}</div>
+    </div>
+    <div class="hint">Click the button, then click new waypoints on the canvas and Finish — only that line's route is replaced.</div>`;
+  document.getElementById('retraceGasBtn').onclick = ()=> startRetrace(edge, 'gas');
+  document.getElementById('retraceLiquidBtn').onclick = ()=> startRetrace(edge, 'liquid');
+}
+function startRetrace(edge, kindKey){
+  state.currentTool = 'trace';
+  document.querySelectorAll('.tool-btn[data-tool]').forEach(b=>b.classList.remove('active'));
+  const tb = document.querySelector('.tool-btn[data-tool=trace]');
+  if(tb) tb.classList.add('active');
+  overlayCanvas.style.cursor = 'crosshair';
+  traceOp = {fromId: edge.fromId, toId: edge.toId, points: [], forceKind: kindKey, retraceEdgeId: edge.id};
+  floatingBar.classList.add('show');
+  updateTraceBarText();
+  toast('Re-tracing the '+kindKey+' line — click along the new route, then Finish.');
+}
+
+/* Mouse-move preview for calibration line / in-progress trace */
+overlayCanvas.addEventListener('mousemove', (e)=>{
+  if(!(state.currentTool==='calibrate' && calibPoints.length===1) &&
+     !(state.currentTool==='trace' && traceOp && traceOp.toId)) return;
+  const rect = overlayCanvas.getBoundingClientRect();
+  const pagePt = canvasToPage(e.clientX-rect.left, e.clientY-rect.top);
+  redrawOverlay(pagePt);
+});
+
+/* ============================== Drawing ============================== */
+function drawCrossPageStub(c, kind, label, lenM){
+  const dx = kind==='gas' ? -20 : 20;
+  const color = kind==='gas' ? '#c0392b' : '#1a6fb5';
+  octx.strokeStyle = color; octx.lineWidth = 2.5; octx.setLineDash([4,3]);
+  octx.beginPath(); octx.moveTo(c.x,c.y); octx.lineTo(c.x+dx, c.y-22); octx.stroke(); octx.setLineDash([]);
+  const txt = '⇄ '+label+(lenM!=null?' ('+lenM.toFixed(1)+'m)':'');
+  octx.font = '9px Segoe UI, Arial';
+  const w = octx.measureText(txt).width;
+  octx.fillStyle = 'rgba(255,255,255,.92)'; octx.fillRect(c.x+dx-w/2-3, c.y-22-12, w+6, 14);
+  octx.fillStyle = color;
+  octx.fillText(txt, c.x+dx-w/2, c.y-22-2);
+}
+function redrawOverlay(hoverPt){
+  octx.clearRect(0,0,overlayCanvas.width, overlayCanvas.height);
+  const pg = state.currentPage;
+
+  // edges
+  state.edges.filter(e=>e.page===pg && !e.crossPage).forEach(e=>{
+    ['gas','liquid'].forEach(kind=>{
+      const seg = e[kind];
+      if(!seg || !seg.points) return;
+      const isSel = selection && selection.type==='edge' && selection.id===e.id;
+      octx.strokeStyle = kind==='gas' ? '#c0392b' : '#1a6fb5';
+      octx.lineWidth = isSel ? 4.5 : 3;
+      octx.setLineDash(kind==='liquid' ? [] : []);
+      octx.beginPath();
+      seg.points.forEach((p,i)=>{
+        const c = pageToCanvas(p.x,p.y);
+        if(i===0) octx.moveTo(c.x,c.y); else octx.lineTo(c.x,c.y);
+      });
+      octx.stroke();
+      // midpoint label
+      const mid = seg.points[Math.floor(seg.points.length/2)];
+      if(mid && seg.lengthM!=null){
+        const c = pageToCanvas(mid.x, mid.y);
+        const label = (kind==='gas'?'G ':'L ') + effectiveLen(seg).toFixed(1)+'m';
+        octx.font = 'bold 11px Segoe UI, Arial';
+        const w = octx.measureText(label).width;
+        octx.fillStyle = 'rgba(255,255,255,.88)';
+        octx.fillRect(c.x-w/2-3, c.y-9-(kind==='gas'?12:0), w+6, 14);
+        octx.fillStyle = kind==='gas' ? '#c0392b' : '#1a6fb5';
+        octx.fillText(label, c.x-w/2, c.y+2-(kind==='gas'?12:0));
+      }
+    });
+  });
+
+  // cross-page links: draw a small stub + label on whichever page is currently showing,
+  // since the two ends live in different page coordinate spaces and can't be joined with a real line.
+  state.edges.filter(e=>e.crossPage).forEach(e=>{
+    const fromNode = state.nodes.find(n=>n.id===e.fromId), toNode = state.nodes.find(n=>n.id===e.toId);
+    if(!fromNode||!toNode) return;
+    ['gas','liquid'].forEach(kind=>{
+      const seg = e[kind]; if(!seg) return;
+      const eff = effectiveLen(seg);
+      if(fromNode.page===pg) drawCrossPageStub(pageToCanvas(fromNode.x,fromNode.y), kind, 'Page '+toNode.page+': '+toNode.label, eff);
+      if(toNode.page===pg) drawCrossPageStub(pageToCanvas(toNode.x,toNode.y), kind, 'Page '+fromNode.page+': '+fromNode.label, eff);
+    });
+  });
+
+  // in-progress trace
+  if(state.currentTool==='trace' && traceOp && traceOp.toId){
+    const fromNode = state.nodes.find(n=>n.id===traceOp.fromId);
+    const toNode = state.nodes.find(n=>n.id===traceOp.toId);
+    const pts = [{x:fromNode.x,y:fromNode.y}, ...traceOp.points];
+    if(hoverPt) pts.push(hoverPt); else pts.push({x:toNode.x,y:toNode.y});
+    octx.strokeStyle = '#e8730a'; octx.lineWidth = 3; octx.setLineDash([6,4]);
+    octx.beginPath();
+    pts.forEach((p,i)=>{ const c=pageToCanvas(p.x,p.y); if(i===0) octx.moveTo(c.x,c.y); else octx.lineTo(c.x,c.y); });
+    octx.stroke();
+    octx.setLineDash([]);
+    traceOp.points.forEach(p=>{
+      const c = pageToCanvas(p.x,p.y);
+      octx.fillStyle='#e8730a'; octx.beginPath(); octx.arc(c.x,c.y,3,0,7); octx.fill();
+    });
+  }
+
+  // calibration
+  if(state.currentTool==='calibrate' && calibPoints.length>=1){
+    const pts = calibPoints.slice();
+    if(pts.length===1 && hoverPt) pts.push(hoverPt);
+    if(pts.length>=1){
+      octx.strokeStyle='#8e44ad'; octx.lineWidth=2.5; octx.setLineDash([5,4]);
+      octx.beginPath();
+      pts.forEach((p,i)=>{ const c=pageToCanvas(p.x,p.y); if(i===0) octx.moveTo(c.x,c.y); else octx.lineTo(c.x,c.y); });
+      octx.stroke(); octx.setLineDash([]);
+    }
+    calibPoints.forEach(p=>{
+      const c=pageToCanvas(p.x,p.y);
+      octx.fillStyle='#8e44ad'; octx.beginPath(); octx.arc(c.x,c.y,4,0,7); octx.fill();
+    });
+  }
+  // saved calibration marker (faint)
+  const s = getScaleObj(pg);
+  if(s.calibA && s.calibB){
+    const a=pageToCanvas(s.calibA.x,s.calibA.y), b=pageToCanvas(s.calibB.x,s.calibB.y);
+    octx.strokeStyle='rgba(142,68,173,.35)'; octx.lineWidth=2; octx.setLineDash([3,3]);
+    octx.beginPath(); octx.moveTo(a.x,a.y); octx.lineTo(b.x,b.y); octx.stroke(); octx.setLineDash([]);
+  }
+
+  // nodes
+  state.nodes.filter(n=>n.page===pg).forEach(n=>{
+    const c = pageToCanvas(n.x, n.y);
+    const colors = {ODU:'#16324f', BRANCH:'#e8730a', IDU:'#1e8e3e'};
+    const isSel = selection && selection.type==='node' && selection.id===n.id;
+    octx.fillStyle = colors[n.type];
+    octx.strokeStyle = isSel ? '#ffcf3f' : '#ffffff';
+    octx.lineWidth = isSel? 3 : 1.6;
+    octx.beginPath();
+    if(n.type==='ODU'){ octx.rect(c.x-7,c.y-7,14,14); }
+    else if(n.type==='BRANCH'){ octx.moveTo(c.x,c.y-7); octx.lineTo(c.x+7,c.y+6); octx.lineTo(c.x-7,c.y+6); octx.closePath(); }
+    else { octx.arc(c.x,c.y,6.5,0,7); }
+    octx.fill(); octx.stroke();
+    octx.font = '10px Segoe UI, Arial'; octx.fillStyle='#111';
+    const tw = octx.measureText(n.label).width;
+    octx.fillStyle='rgba(255,255,255,.85)'; octx.fillRect(c.x-tw/2-2, c.y+9, tw+4, 12);
+    octx.fillStyle='#111'; octx.fillText(n.label, c.x-tw/2, c.y+18);
+  });
+}
+
+/* ============================== Tree / rollup math ============================== */
+function systemTree(systemId){
+  const nodes = state.nodes.filter(n=>n.systemId===systemId);
+  const edges = state.edges.filter(e=>e.systemId===systemId);
+  const byId = {}; nodes.forEach(n=>byId[n.id]=n);
+  const children = {}; nodes.forEach(n=>children[n.id]=[]);
+  edges.forEach(e=>{ if(children[e.fromId]) children[e.fromId].push(e); });
+  const odu = nodes.find(n=>n.type==='ODU');
+  return {nodes, edges, byId, children, odu};
+}
+
+function routeLenM(edge){
+  const g = edge.gas ? effectiveLen(edge.gas) : null;
+  const l = edge.liquid ? effectiveLen(edge.liquid) : null;
+  if(g!=null && l!=null) return (g+l)/2;
+  if(g!=null) return g;
+  if(l!=null) return l;
+  return null;
+}
+
+function computeSystemMetrics(sys){
+  const {nodes, edges, byId, children, odu} = systemTree(sys.id);
+  const metrics = {complete:true, missingLength:false};
+  if(!odu){ metrics.noOdu = true; return metrics; }
+
+  // classify edges: odu->branch = outdoor main; branch->branch = indoor main (doubled); branch/odu->idu = indoor aux
+  let outdoorMainSum=0, indoorMainSum=0, indoorAuxSum=0;
+  let anyMissing=false;
+  edges.forEach(e=>{
+    const len = routeLenM(e);
+    if(len==null){ anyMissing=true; return; }
+    const fromNode = byId[e.fromId], toNode = byId[e.toId];
+    if(!fromNode||!toNode) return;
+    if(fromNode.type==='ODU'){ outdoorMainSum += len; }
+    else if(toNode.type==='IDU'){ indoorAuxSum += len; }
+    else { indoorMainSum += len; }
+  });
+  metrics.totalPipingLength = outdoorMainSum + 2*indoorMainSum + indoorAuxSum;
+  metrics.missingLength = anyMissing;
+
+  // longest path ODU -> each IDU (actual), and rootBranch -> each IDU
+  const rootBranchEdge = edges.find(e=>byId[e.fromId] && byId[e.fromId].type==='ODU');
+  const rootBranch = rootBranchEdge ? byId[rootBranchEdge.toId] : null;
+
+  function longestPathFrom(startId, stopAtId){
+    let max = 0, found=false;
+    function dfs(nodeId, acc){
+      const outs = children[nodeId]||[];
+      const toIdu = byId[nodeId] && byId[nodeId].type==='IDU';
+      if(outs.length===0 && byId[nodeId] && byId[nodeId].type==='IDU'){ found=true; max=Math.max(max,acc); return; }
+      outs.forEach(e=>{
+        const len = routeLenM(e);
+        dfs(e.toId, acc + (len||0));
+      });
+    }
+    dfs(startId, 0);
+    return {value:max, found};
+  }
+  const fromOdu = longestPathFrom(odu.id);
+  metrics.farthestIduFromOdu = fromOdu.found ? fromOdu.value : null;
+  metrics.branchJointCount = nodes.filter(n=>n.type==='BRANCH').length;
+  metrics.farthestIduEquiv = fromOdu.found ? (fromOdu.value + 0.5*metrics.branchJointCount) : null;
+  if(rootBranch){
+    const fromBranch = longestPathFrom(rootBranch.id);
+    metrics.branchToFarthestIdu = fromBranch.found ? fromBranch.value : null;
+  } else { metrics.branchToFarthestIdu = null; }
+
+  // outdoor unit to outdoor branch (only relevant multi-ODU systems) - approximate via edges from ODU-type nodes among each other; skipped for MVP (rare in single-ODU risers)
+
+  // refrigerant additional charge (liquid pipes only)
+  const chargeTable = sys.charge || [];
+  function factorFor(od){
+    if(od==null) return null;
+    const row = chargeTable.find(r=>Math.abs(r.od-od)<0.05);
+    return row ? row.factor : null;
+  }
+  let charge = 0, chargeIncomplete=false;
+  edges.forEach(e=>{
+    const liqLen = e.liquid ? effectiveLen(e.liquid) : null;
+    if(liqLen!=null){
+      const f = factorFor(e.liquid.diameterMm);
+      if(f==null){ chargeIncomplete=true; }
+      else charge += liqLen * f;
+    }
+  });
+  // branch joints: add 0.5m equivalent at the diameter of the liquid pipe feeding into them
+  nodes.filter(n=>n.type==='BRANCH').forEach(b=>{
+    const incoming = edges.find(e=>e.toId===b.id);
+    if(incoming && incoming.liquid && incoming.liquid.diameterMm!=null){
+      const f = factorFor(incoming.liquid.diameterMm);
+      if(f!=null) charge += 0.5*f;
+    }
+  });
+  metrics.additionalChargeKg = charge;
+  metrics.chargeIncomplete = chargeIncomplete;
+
+  // gas/liquid totals (effective length = traced length + 1m per identified bend)
+  metrics.totalGasM = edges.reduce((s,e)=> s + (e.gas ? (effectiveLen(e.gas)||0) : 0), 0);
+  metrics.totalLiquidM = edges.reduce((s,e)=> s + (e.liquid ? (effectiveLen(e.liquid)||0) : 0), 0);
+
+  // --- IDU capacity + ODU/IDU combination ratio ---
+  const iduNodes = nodes.filter(n=>n.type==='IDU');
+  const capacitiesEntered = iduNodes.filter(n=>n.capacityKw!=null);
+  metrics.totalIduCapacityKw = capacitiesEntered.length ? capacitiesEntered.reduce((s,n)=>s+n.capacityKw,0) : null;
+  metrics.iduCapacityComplete = capacitiesEntered.length===iduNodes.length && iduNodes.length>0;
+  metrics.combinationRatioPct = (metrics.totalIduCapacityKw!=null && sys.oduCapacityKw) ? (metrics.totalIduCapacityKw/sys.oduCapacityKw*100) : null;
+
+  // --- Level (height) differences, derived from each node's floor number x the system's floor-to-floor height ---
+  const floorH = sys.floorHeightM || 0;
+  const iduFloors = iduNodes.filter(n=>n.floor!=null).map(n=>n.floor);
+  if(odu.floor!=null && iduFloors.length && floorH){
+    metrics.levelDiffOduIdu = Math.max(...iduFloors.map(f=>Math.abs(f-odu.floor)))*floorH;
+  } else metrics.levelDiffOduIdu = null;
+  if(iduFloors.length>=2 && floorH){
+    metrics.levelDiffIduIdu = (Math.max(...iduFloors)-Math.min(...iduFloors))*floorH;
+  } else metrics.levelDiffIduIdu = null;
+
+  // --- Auto pipe-sizing suggestions (VC Max only — see VCMAX_* tables) ---
+  metrics.sizingSuggestions = suggestSizing(sys, edges, byId, children, metrics.farthestIduEquiv);
+
+  return metrics;
+}
+
+// Sum of IDU capacities (kW) in the subtree reached by continuing past a given node.
+function downstreamIduCapacityKw(startNodeId, children, byId){
+  let sum = 0, complete = true;
+  (function dfs(id){
+    const node = byId[id];
+    if(node && node.type==='IDU'){ if(node.capacityKw==null) complete=false; else sum += node.capacityKw; }
+    (children[id]||[]).forEach(e=>dfs(e.toId));
+  })(startNodeId);
+  return {kw:sum, complete};
+}
+
+function suggestSizing(sys, edges, byId, children, farthestIduEquiv){
+  const out = {}; // edgeId -> {gas,liq,kit,confidence,note}
+  if(sys.line!=='VC Max') return out;
+  const ge90 = farthestIduEquiv!=null && farthestIduEquiv>=90;
+  edges.forEach(e=>{
+    const fromNode = byId[e.fromId], toNode = byId[e.toId];
+    if(!fromNode||!toNode) return;
+    if(toNode.type==='IDU'){
+      if(toNode.capacityKw==null) return;
+      const row = VCMAX_AUX_TABLE.find(r=>toNode.capacityKw<=r.kwMax);
+      if(row) out[e.id] = {gas:row.gas, liq:row.liq, kit:null, confidence:'verified', note:'Table 3-4.10 (indoor auxiliary pipe), by this IDU\'s capacity.'};
+    } else if(fromNode.type==='ODU'){
+      if(!sys.hp) return;
+      const row = VCMAX_L1_TABLE.find(r=>sys.hp<=r.hpMax);
+      if(!row) return;
+      const col = ge90 ? row.ge90 : row.lt90;
+      out[e.id] = {gas:col.gas, liq:col.liq, kit:col.kit, confidence:'verified',
+        note:'Table 3-4.5 (main pipe L1 + first branch joint), by total ODU HP and equivalent length to the farthest IDU ('+(ge90?'>=90m':'<90m')+').'};
+    } else {
+      const downstream = downstreamIduCapacityKw(e.toId, children, byId);
+      if(!downstream.complete || downstream.kw===0) return;
+      const idx = downstream.kw*VCMAX_INDEX_TO_KW;
+      const row = VCMAX_INDOOR_MAIN_TABLE.find(r=>idx<=r.idxMax);
+      if(row) out[e.id] = {gas:row.gas, liq:row.liq, kit:row.kit, confidence:'estimated',
+        note:'Table 3-4.6 (indoor main pipe), by downstream IDU capacity x10 as a capacity-index estimate — verify against the book directly.'};
+    }
+  });
+  return out;
+}
+
+/* ============================== Results tab ============================== */
+function renderResults(){
+  const wrap = document.getElementById('resultsList');
+  if(state.systems.length===0){ wrap.innerHTML = '<div class="card">No VRF systems yet. Go to the Trace tab and add one.</div>'; return; }
+  wrap.innerHTML = '';
+  state.systems.forEach(sys=>{
+    const edges = state.edges.filter(e=>e.systemId===sys.id);
+    const metrics = computeSystemMetrics(sys);
+    const div = document.createElement('div');
+    div.className = 'card';
+    let rows = '';
+    edges.forEach(e=>{
+      const fromN = state.nodes.find(n=>n.id===e.fromId), toN = state.nodes.find(n=>n.id===e.toId);
+      if(!fromN||!toN) return;
+      const suggestion = metrics.sizingSuggestions ? metrics.sizingSuggestions[e.id] : null;
+      ['gas','liquid'].forEach(kind=>{
+        const seg = e[kind];
+        if(!seg) return;
+        const eff = effectiveLen(seg);
+        const bends = bendCountOf(seg);
+        const lenTxt = eff!=null ? eff.toFixed(2)+' m'+(bends>0?` <span style="color:var(--muted);font-weight:400;">(+${bends}×${BEND_ALLOWANCE_M}m)</span>`:'') : '<span class="lenval missing">calibrate page</span>';
+        const diaOptions = ['<option value="">—</option>'].concat(PIPE_DIAMETERS_MM.map(d=>`<option value="${d}" ${seg.diameterMm===d?'selected':''}>Ø${d}</option>`)).join('');
+        let sugCell = '—';
+        if(kind==='liquid'){
+          sugCell = `<select class="small-select dia-select" data-edge="${e.id}">${diaOptions}</select>`;
+          if(suggestion && suggestion.gas!=null){
+            const already = seg.diameterMm===suggestion.liq;
+            sugCell += `<div style="font-size:9.5px;color:${suggestion.confidence==='verified'?'var(--ok)':'#b3841b'};margin-top:2px;">
+              Suggested Ø${suggestion.liq}${suggestion.kit?(' · '+suggestion.kit):''} (${suggestion.confidence})
+              ${already?'':`<span class="icon-x" style="color:var(--blue);" data-apply="${e.id}" data-val="${suggestion.liq}">use</span>`}
+            </div>`;
+          }
+        }
+        rows += `<tr>
+          <td>${fromN.label} → ${toN.label}</td>
+          <td><span class="pill ${kind}">${kind==='gas'?'GAS':'LIQ'}</span></td>
+          <td class="lenval">${lenTxt}</td>
+          <td>${sugCell}</td>
+          <td><span class="icon-x" data-edge="${e.id}" data-kind="${kind}">✕</span></td>
+        </tr>`;
+      });
+    });
+    if(rows===''){ rows = `<tr><td colspan="5" style="color:var(--muted);font-style:italic;">No pipe runs traced yet.</td></tr>`; }
+
+    const limits = sys.limits || {};
+    function checkRow(label, val, max, unit){
+      if(max==null) return `<div class="limitrow"><span>${label}</span><span class="badge-na">no limit set</span></div>`;
+      if(val==null) return `<div class="limitrow"><span>${label}</span><span class="badge-na">— not traced</span></div>`;
+      const ok = val<=max;
+      return `<div class="limitrow"><span>${label}: <b>${val.toFixed(1)}${unit}</b> / ${max}${unit}</span><span class="${ok?'badge-ok':'badge-bad'}">${ok?'OK':'OVER'}</span></div>`;
+    }
+    function checkRowRange(label, val, min, max, unit){
+      if(min==null && max==null) return `<div class="limitrow"><span>${label}</span><span class="badge-na">no limit set</span></div>`;
+      if(val==null) return `<div class="limitrow"><span>${label}</span><span class="badge-na">— not enough data</span></div>`;
+      const ok = (min==null||val>=min) && (max==null||val<=max);
+      return `<div class="limitrow"><span>${label}: <b>${val.toFixed(0)}${unit}</b> (range ${min??'—'}-${max??'—'}${unit})</span><span class="${ok?'badge-ok':'badge-bad'}">${ok?'OK':'OUT OF RANGE'}</span></div>`;
+    }
+
+    div.innerHTML = `<h3>${sys.name} <span style="font-weight:400;color:var(--muted);">(${sys.line}${sys.hp?(' · '+sys.hp+'HP'):''})</span></h3>
+      <table class="seg"><thead><tr><th>Run</th><th>Type</th><th>Length</th><th>Liq Ø(mm) / suggestion</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+      <div class="totals">
+        <div class="k">Total gas length</div><div class="v">${metrics.totalGasM?metrics.totalGasM.toFixed(2):'0.00'} m</div>
+        <div class="k">Total liquid length</div><div class="v">${metrics.totalLiquidM?metrics.totalLiquidM.toFixed(2):'0.00'} m</div>
+        <div class="k">Total piping length (spec formula)</div><div class="v">${metrics.totalPipingLength!=null?metrics.totalPipingLength.toFixed(1)+' m':'—'}</div>
+        <div class="k">Est. additional refrigerant charge</div><div class="v">${metrics.additionalChargeKg?metrics.additionalChargeKg.toFixed(2)+' kg':'—'}${metrics.chargeIncomplete?' *':''}</div>
+        <div class="k">Connected IDU capacity</div><div class="v">${metrics.totalIduCapacityKw!=null?metrics.totalIduCapacityKw.toFixed(1)+' kW'+(metrics.iduCapacityComplete?'':' *'):'—'}</div>
+      </div>
+      ${metrics.chargeIncomplete?'<div class="footnote">* Set liquid pipe Ø for every run to complete the charge estimate.</div>':''}
+      ${(metrics.totalIduCapacityKw!=null && !metrics.iduCapacityComplete)?'<div class="footnote">* Not every IDU has a capacity entered yet — double-click a node to add one.</div>':''}
+      <div class="footnote">Lengths shown include a +${BEND_ALLOWANCE_M}m allowance per identified bend (direction change &gt;${BEND_ANGLE_THRESHOLD_DEG}° along a traced run), to approximate elbow/fitting length.</div>
+      <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">
+        ${checkRow('Farthest IDU ↔ first ODU branch (actual)', metrics.farthestIduFromOdu, limits.farthestIduActualMax, 'm')}
+        ${checkRow('Farthest IDU ↔ first ODU branch (equiv.)', metrics.farthestIduEquiv, limits.farthestIduEquivMax, 'm')}
+        ${checkRow('First branch ↔ farthest IDU', metrics.branchToFarthestIdu, limits.branchToFarthestIduMax, 'm')}
+        ${checkRow('Total piping length', metrics.totalPipingLength, limits.totalPipingLengthMax, 'm')}
+        ${checkRow('Level diff ODU ↔ IDU (from floor #s)', metrics.levelDiffOduIdu, limits.levelDiffOduIduMax, 'm')}
+        ${checkRow('Level diff IDU ↔ IDU (from floor #s)', metrics.levelDiffIduIdu, limits.levelDiffIduIduMax, 'm')}
+        ${checkRowRange('ODU/IDU combination ratio', metrics.combinationRatioPct, limits.combinationRatioMin, limits.combinationRatioMax, '%')}
+      </div>
+      ${metrics.noOdu?'<div class="hint">Add an ODU node for this system to compute route metrics.</div>':''}
+      `;
+    wrap.appendChild(div);
+
+    div.querySelectorAll('.dia-select').forEach(sel=>{
+      sel.addEventListener('change', ()=>{
+        const edge = state.edges.find(e=>e.id===sel.getAttribute('data-edge'));
+        if(edge && edge.liquid){ pushHistory(); edge.liquid.diameterMm = sel.value? parseFloat(sel.value): null; renderResults(); }
+      });
+    });
+    div.querySelectorAll('[data-apply]').forEach(ic=>{
+      ic.addEventListener('click', ()=>{
+        const edge = state.edges.find(e=>e.id===ic.getAttribute('data-apply'));
+        const val = parseFloat(ic.getAttribute('data-val'));
+        if(edge && edge.liquid){ pushHistory(); edge.liquid.diameterMm = val; renderResults(); }
+      });
+    });
+    div.querySelectorAll('.icon-x[data-edge]').forEach(ic=>{
+      ic.addEventListener('click', async ()=>{
+        const edge = state.edges.find(e=>e.id===ic.getAttribute('data-edge'));
+        const kind = ic.getAttribute('data-kind');
+        if(!edge) return;
+        const ok = await confirmModal('Delete run', 'Remove this '+kind+' segment? (Ctrl+Z to undo.)');
+        if(!ok) return;
+        pushHistory();
+        edge[kind] = null;
+        if(!edge.gas && !edge.liquid) state.edges = state.edges.filter(e=>e.id!==edge.id);
+        renderResults(); redrawOverlay(); renderSelectionPanel();
+      });
+    });
+  });
+}
+
+/* ============================== Limits tab ============================== */
+function renderLimitsPanel(){
+  const wrap = document.getElementById('limitsPanel');
+  if(state.systems.length===0){ wrap.innerHTML = '<div class="card">No VRF systems yet.</div>'; return; }
+  wrap.innerHTML = '';
+  state.systems.forEach(sys=>{
+    const L = sys.limits;
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = `<h3>${sys.name} — ${sys.line} design limits</h3>
+      <div class="row"><label>ODU capacity (HP)</label><input type="number" data-sys="hp" value="${sys.hp??''}"></div>
+      <div class="row"><label>ODU nominal capacity (kW)</label><input type="number" step="0.1" data-sys="oduCapacityKw" value="${sys.oduCapacityKw??''}"></div>
+      <div class="row"><label>Floor-to-floor height (m)</label><input type="number" step="0.1" data-sys="floorHeightM" value="${sys.floorHeightM??''}"></div>
+      <div class="row"><label>Total piping length max (m)</label><input type="number" data-k="totalPipingLengthMax" value="${L.totalPipingLengthMax??''}"></div>
+      <div class="row"><label>Farthest IDU–ODU actual max (m)</label><input type="number" data-k="farthestIduActualMax" value="${L.farthestIduActualMax??''}"></div>
+      <div class="row"><label>Farthest IDU–ODU equiv. max (m)</label><input type="number" data-k="farthestIduEquivMax" value="${L.farthestIduEquivMax??''}"></div>
+      <div class="row"><label>1st branch–farthest IDU max (m)</label><input type="number" data-k="branchToFarthestIduMax" value="${L.branchToFarthestIduMax??''}"></div>
+      <div class="row"><label>...extended (with measures) (m)</label><input type="number" data-k="branchToFarthestIduMaxExtended" value="${L.branchToFarthestIduMaxExtended??''}"></div>
+      <div class="row"><label>Level diff ODU↔IDU max (m)</label><input type="number" data-k="levelDiffOduIduMax" value="${L.levelDiffOduIduMax??''}"></div>
+      <div class="row"><label>Level diff IDU↔IDU max (m)</label><input type="number" data-k="levelDiffIduIduMax" value="${L.levelDiffIduIduMax??''}"></div>
+      <div class="row"><label>Combination ratio min (%)</label><input type="number" data-k="combinationRatioMin" value="${L.combinationRatioMin??''}"></div>
+      <div class="row"><label>Combination ratio max (%)</label><input type="number" data-k="combinationRatioMax" value="${L.combinationRatioMax??''}"></div>
+      <div class="footnote">${L.note||''}</div>
+      <h3 style="margin-top:12px;">Additional refrigerant charge factor (kg / m of liquid pipe)</h3>
+      <table class="seg"><thead><tr><th>Liquid pipe Ø (mm)</th><th>kg/m</th></tr></thead><tbody>
+      ${sys.charge.map((c,i)=>`<tr><td>Ø${c.od}</td><td><input type="number" step="0.001" class="charge-in" data-i="${i}" value="${c.factor??''}" style="width:80px;"></td></tr>`).join('')}
+      </tbody></table>`;
+    div.querySelectorAll('input[data-sys]').forEach(inp=>{
+      inp.addEventListener('change', ()=>{
+        const k = inp.getAttribute('data-sys');
+        sys[k] = inp.value===''? null : parseFloat(inp.value);
+        renderResults(); renderSystemList();
+      });
+    });
+    div.querySelectorAll('input[data-k]').forEach(inp=>{
+      inp.addEventListener('change', ()=>{
+        const k = inp.getAttribute('data-k');
+        sys.limits[k] = inp.value===''? null : parseFloat(inp.value);
+        renderResults();
+      });
+    });
+    div.querySelectorAll('.charge-in').forEach(inp=>{
+      inp.addEventListener('change', ()=>{
+        const i = parseInt(inp.getAttribute('data-i'));
+        sys.charge[i].factor = inp.value===''? null : parseFloat(inp.value);
+        renderResults();
+      });
+    });
+    wrap.appendChild(div);
+  });
+}
+
+/* ============================== Tabs ============================== */
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.tabpanel').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('tab-'+t.getAttribute('data-tab')).classList.add('active');
+  });
+});
+
+/* ============================== Excel export (styled, via ExcelJS) ============================== */
+const XL_NAVY='FF0B2545', XL_WHITE='FFFFFFFF', XL_MUTED='FF6B7686', XL_BORDER='FFEEF1F4';
+const XL_GAS_BG='FFFDECEA', XL_GAS_FG='FFC0392B', XL_LIQ_BG='FFEAF2FB', XL_LIQ_FG='FF1A6FB5';
+const XL_OK_BG='FFE6F4EA', XL_OK_FG='FF1E8E3E', XL_BAD_BG='FFFBEAEA', XL_BAD_FG='FFC0392B', XL_NA_FG='FF9AA4B2';
+const XL_BAND='FFF7F9FB';
+
+function xlTitleBlock(ws, colCount, title, subtitle){
+  ws.mergeCells(1,1,1,colCount);
+  const t = ws.getCell(1,1);
+  t.value = title; t.font = {bold:true, size:13, color:{argb:XL_WHITE}};
+  t.fill = {type:'pattern', pattern:'solid', fgColor:{argb:XL_NAVY}};
+  t.alignment = {vertical:'middle'};
+  ws.getRow(1).height = 22;
+  for(let c=2;c<=colCount;c++) ws.getCell(1,c).fill = {type:'pattern',pattern:'solid',fgColor:{argb:XL_NAVY}};
+
+  ws.mergeCells(2,1,2,colCount);
+  const s = ws.getCell(2,1);
+  s.value = subtitle; s.font = {italic:true, size:9, color:{argb:XL_MUTED}};
+  ws.getRow(2).height = 15;
+}
+function xlHeaderRow(ws, headers){
+  const row = ws.addRow(headers);
+  row.eachCell(c=>{
+    c.font = {bold:true, color:{argb:XL_WHITE}};
+    c.fill = {type:'pattern', pattern:'solid', fgColor:{argb:XL_NAVY}};
+    c.alignment = {vertical:'middle', horizontal:'center', wrapText:true};
+    c.border = {bottom:{style:'thin',color:{argb:XL_NAVY}}};
+  });
+  row.height = 28;
+  return row;
+}
+function xlLimitStatus(val, max){
+  if(max==null) return {text:'no limit set', fg:XL_NA_FG, bg:null};
+  if(val==null) return {text:'not traced', fg:XL_NA_FG, bg:null};
+  const ok = val<=max;
+  return {text: ok?'OK':'OVER', fg: ok?XL_OK_FG:XL_BAD_FG, bg: ok?XL_OK_BG:XL_BAD_BG};
+}
+
+document.getElementById('exportExcelBtn').onclick = async ()=>{
+  if(state.systems.length===0){ toast('Nothing to export yet.'); return; }
+  toast('Building styled Excel workbook…', 2200);
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'MBT VRF Pipe Length Measurement Tool';
+  workbook.created = new Date();
+  const genLine = `Source: ${state.fileName||'—'}   ·   Generated ${new Date().toLocaleString()}   ·   Lengths include +${BEND_ALLOWANCE_M}m per identified bend (elbow/fitting allowance)`;
+
+  // --- Sheet 1: Segments ---
+  const seg = workbook.addWorksheet('Segments', {views:[{state:'frozen', ySplit:3}]});
+  const segHeaders = ['System','ODU Line','HP','Page','From','To','Type','Traced Length (m)','Bends','Bend Allowance (m)','Total Length (m)','Liquid Pipe Ø (mm)'];
+  xlTitleBlock(seg, segHeaders.length, 'VRF Pipe Length Measurements — Segments', genLine);
+  xlHeaderRow(seg, segHeaders);
+  [16,11,7,7,15,15,9,15,8,15,14,15].forEach((w,i)=> seg.getColumn(i+1).width = w);
+
+  let rIdx = 0;
+  state.systems.forEach(sys=>{
+    state.edges.filter(e=>e.systemId===sys.id).forEach(e=>{
+      const fromN = state.nodes.find(n=>n.id===e.fromId), toN = state.nodes.find(n=>n.id===e.toId);
+      if(!fromN||!toN) return;
+      ['gas','liquid'].forEach(kind=>{
+        const segData = e[kind];
+        if(!segData) return;
+        const bends = bendCountOf(segData);
+        const eff = effectiveLen(segData);
+        const row = seg.addRow([sys.name, sys.line, sys.hp||'', e.page, fromN.label, toN.label, kind.toUpperCase(),
+          segData.lengthM!=null? Number(segData.lengthM.toFixed(2)) : null,
+          bends, bends*BEND_ALLOWANCE_M,
+          eff!=null? Number(eff.toFixed(2)) : null,
+          kind==='liquid'?(segData.diameterMm||null):null]);
+        rIdx++;
+        const band = rIdx%2===0 ? XL_BAND : XL_WHITE;
+        row.eachCell((c, colNum)=>{
+          c.border = {bottom:{style:'thin', color:{argb:XL_BORDER}}};
+          if(colNum!==7) c.fill = {type:'pattern', pattern:'solid', fgColor:{argb:band}};
+        });
+        [8,10,11].forEach(cn=> row.getCell(cn).numFmt = '0.00');
+        row.getCell(9).numFmt = '0';
+        row.getCell(4).alignment = {horizontal:'center'};
+        const typeCell = row.getCell(7);
+        typeCell.font = {bold:true, color:{argb: kind==='gas'?XL_GAS_FG:XL_LIQ_FG}};
+        typeCell.fill = {type:'pattern', pattern:'solid', fgColor:{argb: kind==='gas'?XL_GAS_BG:XL_LIQ_BG}};
+        typeCell.alignment = {horizontal:'center'};
+      });
+    });
+  });
+  if(seg.rowCount>=3) seg.autoFilter = {from:{row:3,column:1}, to:{row:3,column:segHeaders.length}};
+
+  // --- Sheet 2: System Summary ---
+  const sum = workbook.addWorksheet('System Summary', {views:[{state:'frozen', ySplit:3}]});
+  const sumHeaders = ['System','ODU Line','HP','Total Gas (m)','Total Liquid (m)',
+    'Total Piping Length (m)','Limit (m)','Status',
+    'Farthest IDU–ODU Actual (m)','Limit (m)','Status',
+    'Farthest IDU–ODU Equiv. (m)','Limit (m)','Status',
+    '1st Branch–Farthest IDU (m)','Limit (m)','Status',
+    'Est. Additional Refrigerant Charge (kg)'];
+  xlTitleBlock(sum, sumHeaders.length, 'VRF Pipe Length Measurements — System Summary', genLine);
+  xlHeaderRow(sum, sumHeaders);
+  [16,11,7,13,13,15,10,9,15,10,9,16,10,9,15,10,9,20].forEach((w,i)=> sum.getColumn(i+1).width = w);
+
+  state.systems.forEach((sys, i)=>{
+    const m = computeSystemMetrics(sys);
+    const L = sys.limits||{};
+    const row = sum.addRow([
+      sys.name, sys.line, sys.hp||'',
+      m.totalGasM?Number(m.totalGasM.toFixed(2)):0,
+      m.totalLiquidM?Number(m.totalLiquidM.toFixed(2)):0,
+      m.totalPipingLength!=null?Number(m.totalPipingLength.toFixed(1)):null, L.totalPipingLengthMax??null, null,
+      m.farthestIduFromOdu!=null?Number(m.farthestIduFromOdu.toFixed(1)):null, L.farthestIduActualMax??null, null,
+      m.farthestIduEquiv!=null?Number(m.farthestIduEquiv.toFixed(1)):null, L.farthestIduEquivMax??null, null,
+      m.branchToFarthestIdu!=null?Number(m.branchToFarthestIdu.toFixed(1)):null, L.branchToFarthestIduMax??null, null,
+      m.additionalChargeKg!=null?Number(m.additionalChargeKg.toFixed(2)):null
+    ]);
+    const band = i%2===1 ? XL_BAND : XL_WHITE;
+    row.eachCell(c=>{ c.border = {bottom:{style:'thin', color:{argb:XL_BORDER}}}; c.fill = {type:'pattern', pattern:'solid', fgColor:{argb:band}}; });
+    [
+      {col:8, val:m.totalPipingLength, max:L.totalPipingLengthMax},
+      {col:11, val:m.farthestIduFromOdu, max:L.farthestIduActualMax},
+      {col:14, val:m.farthestIduEquiv, max:L.farthestIduEquivMax},
+      {col:17, val:m.branchToFarthestIdu, max:L.branchToFarthestIduMax},
+    ].forEach(sc=>{
+      const st = xlLimitStatus(sc.val, sc.max);
+      const cell = row.getCell(sc.col);
+      cell.value = st.text;
+      cell.font = {bold:true, color:{argb:st.fg}};
+      if(st.bg) cell.fill = {type:'pattern', pattern:'solid', fgColor:{argb:st.bg}};
+      cell.alignment = {horizontal:'center'};
+    });
+  });
+  if(sum.rowCount>=3) sum.autoFilter = {from:{row:3,column:1}, to:{row:3,column:sumHeaders.length}};
+
+  const legendRowNum = sum.rowCount + 2; // one blank row as a spacer after the data
+  sum.mergeCells(legendRowNum, 1, legendRowNum, sumHeaders.length);
+  const legend = sum.getCell(legendRowNum, 1);
+  legend.value = 'OK = within the design limit  ·  OVER = exceeds it  ·  "no limit set" = fill it in on the Design Limits tab  ·  "not traced" = that metric needs an ODU/branch/IDU run measured';
+  legend.font = {italic:true, size:9, color:{argb:XL_MUTED}};
+
+  const buf = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const fname = (state.fileName?state.fileName.replace(/\.pdf$/i,''):'VRF_Pipe_Lengths') + '_measurements.xlsx';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fname;
+  a.click();
+  toast('Exported '+fname);
+};
+
+/* ============================== Annotated PDF export ============================== */
+document.getElementById('exportPdfBtn').onclick = async ()=>{
+  if(!state.pdfDoc){ toast('Upload a plan first.'); return; }
+  toast('Building annotated PDF… this can take a few seconds.', 3000);
+  const { jsPDF } = window.jspdf;
+  let outPdf = null;
+  const exportScale = 2; // render crisper than screen
+  for(let p=1; p<=state.numPages; p++){
+    const page = await state.pdfDoc.getPage(p);
+    const viewport = page.getViewport({scale: exportScale});
+    const tmpCanvas = document.createElement('canvas');
+    tmpCanvas.width = viewport.width; tmpCanvas.height = viewport.height;
+    const tctx = tmpCanvas.getContext('2d');
+    await page.render({canvasContext: tctx, viewport}).promise;
+
+    // draw overlay for this page at exportScale
+    state.edges.filter(e=>e.page===p && !e.crossPage).forEach(e=>{
+      ['gas','liquid'].forEach(kind=>{
+        const seg = e[kind];
+        if(!seg||!seg.points) return;
+        tctx.strokeStyle = kind==='gas'?'#c0392b':'#1a6fb5';
+        tctx.lineWidth = 3;
+        tctx.beginPath();
+        seg.points.forEach((pt,i)=>{ const x=pt.x*exportScale, y=pt.y*exportScale; if(i===0) tctx.moveTo(x,y); else tctx.lineTo(x,y); });
+        tctx.stroke();
+        const mid = seg.points[Math.floor(seg.points.length/2)];
+        if(mid && seg.lengthM!=null){
+          const label=(kind==='gas'?'G ':'L ')+effectiveLen(seg).toFixed(1)+'m';
+          tctx.font='bold 13px Arial';
+          const w=tctx.measureText(label).width;
+          const x=mid.x*exportScale, y=mid.y*exportScale-(kind==='gas'?14:0);
+          tctx.fillStyle='rgba(255,255,255,.88)'; tctx.fillRect(x-w/2-3,y-11,w+6,16);
+          tctx.fillStyle= kind==='gas'?'#c0392b':'#1a6fb5'; tctx.fillText(label,x-w/2,y+2);
+        }
+      });
+    });
+    state.nodes.filter(n=>n.page===p).forEach(n=>{
+      const x=n.x*exportScale, y=n.y*exportScale;
+      const colors={ODU:'#16324f',BRANCH:'#e8730a',IDU:'#1e8e3e'};
+      tctx.fillStyle=colors[n.type]; tctx.strokeStyle='#fff'; tctx.lineWidth=2;
+      tctx.beginPath();
+      if(n.type==='ODU') tctx.rect(x-9,y-9,18,18);
+      else if(n.type==='BRANCH'){ tctx.moveTo(x,y-9); tctx.lineTo(x+9,y+8); tctx.lineTo(x-9,y+8); tctx.closePath(); }
+      else tctx.arc(x,y,8,0,7);
+      tctx.fill(); tctx.stroke();
+      tctx.font='11px Arial'; const tw=tctx.measureText(n.label).width;
+      tctx.fillStyle='rgba(255,255,255,.85)'; tctx.fillRect(x-tw/2-2,y+11,tw+4,14);
+      tctx.fillStyle='#111'; tctx.fillText(n.label, x-tw/2, y+21);
+    });
+
+    const imgData = tmpCanvas.toDataURL('image/jpeg', 0.92);
+    const wIn = viewport.width/exportScale/72, hIn = viewport.height/exportScale/72;
+    if(!outPdf){ outPdf = new jsPDF({orientation: wIn>hIn?'landscape':'portrait', unit:'in', format:[wIn,hIn]}); }
+    else { outPdf.addPage([wIn,hIn], wIn>hIn?'landscape':'portrait'); }
+    outPdf.addImage(imgData, 'JPEG', 0, 0, wIn, hIn);
+  }
+  const fname = (state.fileName?state.fileName.replace(/\.pdf$/i,''):'VRF_Pipe_Plan') + '_annotated.pdf';
+  outPdf.save(fname);
+  toast('Exported '+fname);
+};
+
+document.getElementById('exportSummaryBtn').onclick = ()=>{
+  if(!state.systems.length){ toast('Add at least one VRF system first.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'mm', format:'a4'});
+  const pageW = 210, pageH = 297, margin = 15;
+  const navy = [11,37,69], green=[30,142,62], red=[192,57,43], grey=[150,150,150], ink=[30,30,30];
+
+  function drawHeader(sys, m){
+    doc.setFillColor(...navy); doc.rect(0,0,pageW,20,'F');
+    doc.setTextColor(255,255,255); doc.setFontSize(14); doc.setFont(undefined,'bold');
+    doc.text('VRF System Summary — '+sys.name, margin, 12);
+    doc.setFontSize(9); doc.setFont(undefined,'normal');
+    const sub = [sys.line, sys.hp?(sys.hp+' HP'):null, sys.oduCapacityKw?(sys.oduCapacityKw+' kW'):null].filter(Boolean).join(' · ');
+    doc.text(sub, margin, 17);
+    doc.setTextColor(...ink);
+    return 28;
+  }
+  function sectionTitle(label, y){
+    doc.setFont(undefined,'bold'); doc.setFontSize(10.5); doc.setTextColor(...ink);
+    doc.text(label, margin, y);
+    doc.setDrawColor(...navy); doc.setLineWidth(0.3);
+    doc.line(margin, y+1.5, pageW-margin, y+1.5);
+    return y+6;
+  }
+  function checkLine(label, val, max, unit, y){
+    let status, color;
+    if(max==null){ status='no limit set'; color=grey; }
+    else if(val==null){ status='not traced'; color=grey; }
+    else { const ok = val<=max; status = ok?'OK':'OVER LIMIT'; color = ok?green:red; }
+    doc.setFont(undefined,'normal'); doc.setFontSize(9); doc.setTextColor(...ink);
+    const valStr = (val!=null?val.toFixed(1)+unit:'—') + (max!=null?(' / '+max+unit+' max'):'');
+    doc.text(label, margin, y);
+    doc.text(valStr, margin+95, y);
+    doc.setFont(undefined,'bold'); doc.setTextColor(...color);
+    doc.text(status, pageW-margin-22, y);
+    doc.setTextColor(...ink); doc.setFont(undefined,'normal');
+    return y+5.2;
+  }
+  function rangeCheckLine(label, val, min, max, unit, y){
+    let status, color;
+    if(val==null){ status='not entered'; color=grey; }
+    else if(min==null && max==null){ status='no limit set'; color=grey; }
+    else { const ok=(min==null||val>=min)&&(max==null||val<=max); status = ok?'OK':'OUT OF RANGE'; color= ok?green:red; }
+    doc.setFont(undefined,'normal'); doc.setFontSize(9); doc.setTextColor(...ink);
+    const rangeStr = (min!=null||max!=null) ? (' / '+(min??'—')+'–'+(max??'—')+unit) : '';
+    doc.text(label, margin, y);
+    doc.text((val!=null?val.toFixed(1)+unit:'—')+rangeStr, margin+95, y);
+    doc.setFont(undefined,'bold'); doc.setTextColor(...color);
+    doc.text(status, pageW-margin-22, y);
+    doc.setTextColor(...ink); doc.setFont(undefined,'normal');
+    return y+5.2;
+  }
+
+  state.systems.forEach((sys, sysIdx)=>{
+    if(sysIdx>0) doc.addPage();
+    const m = computeSystemMetrics(sys);
+    const L = sys.limits||{};
+    let y = drawHeader(sys, m);
+
+    y = sectionTitle('Totals', y);
+    doc.setFontSize(9); doc.setFont(undefined,'normal');
+    [
+      ['Total gas length (incl. bend allowance)', (m.totalGasM||0).toFixed(2)+' m'],
+      ['Total liquid length (incl. bend allowance)', (m.totalLiquidM||0).toFixed(2)+' m'],
+      ['Total piping length (spec formula)', m.totalPipingLength!=null?m.totalPipingLength.toFixed(1)+' m':'—'],
+      ['Est. additional refrigerant charge', m.additionalChargeKg!=null?m.additionalChargeKg.toFixed(2)+' kg'+(m.chargeIncomplete?' *':''):'—'],
+      ['Connected IDU capacity', m.totalIduCapacityKw!=null?m.totalIduCapacityKw.toFixed(1)+' kW'+(m.iduCapacityComplete?'':' *'):'—'],
+    ].forEach(([k,v])=>{ doc.text(k+':', margin, y); doc.text(v, margin+100, y); y+=5; });
+    if(m.totalIduCapacityKw!=null && !m.iduCapacityComplete){
+      doc.setFontSize(7.5); doc.setTextColor(...grey);
+      doc.text('* Not every IDU has a capacity value entered.', margin, y); y+=4.5;
+      doc.setTextColor(...ink);
+    }
+    y+=2;
+
+    y = sectionTitle('Design Limit Checks', y);
+    y = checkLine('Farthest IDU ↔ first ODU branch (actual)', m.farthestIduFromOdu, L.farthestIduActualMax, 'm', y);
+    y = checkLine('Farthest IDU ↔ first ODU branch (equiv.)', m.farthestIduEquiv, L.farthestIduEquivMax, 'm', y);
+    y = checkLine('First branch ↔ farthest IDU', m.branchToFarthestIdu, L.branchToFarthestIduMax, 'm', y);
+    y = checkLine('Total piping length', m.totalPipingLength, L.totalPipingLengthMax, 'm', y);
+    y = checkLine('Level diff ODU ↔ IDU (from floor #s)', m.levelDiffOduIdu, L.levelDiffOduIduMax, 'm', y);
+    y = checkLine('Level diff IDU ↔ IDU (from floor #s)', m.levelDiffIduIdu, L.levelDiffIduIduMax, 'm', y);
+    y = rangeCheckLine('ODU/IDU combination ratio', m.combinationRatioPct, L.combinationRatioMin, L.combinationRatioMax, '%', y);
+    y+=2;
+
+    const edges = state.edges.filter(e=>e.systemId===sys.id);
+    const rows = [];
+    edges.forEach(e=>{
+      const fromN = state.nodes.find(n=>n.id===e.fromId), toN = state.nodes.find(n=>n.id===e.toId);
+      if(!fromN||!toN) return;
+      ['gas','liquid'].forEach(kind=>{
+        const seg = e[kind]; if(!seg) return;
+        rows.push({ label: fromN.label+' → '+toN.label + (e.crossPage?' (cross-page)':''), kind, eff: effectiveLen(seg), dia: seg.diameterMm });
+      });
+    });
+
+    function drawTableHeader(yy){
+      doc.setFillColor(...navy); doc.rect(margin-2, yy-4, pageW-2*margin+4, 6, 'F');
+      doc.setTextColor(255,255,255); doc.setFontSize(8.5); doc.setFont(undefined,'bold');
+      doc.text('Segment (From → To)', margin, yy);
+      doc.text('Line', margin+110, yy);
+      doc.text('Length (m)', margin+130, yy);
+      doc.text('Ø (mm)', margin+165, yy);
+      doc.setTextColor(...ink); doc.setFont(undefined,'normal');
+      return yy+6;
+    }
+    y = sectionTitle('Traced Segments', y);
+    y = drawTableHeader(y);
+    rows.forEach((r, i)=>{
+      if(y>pageH-18){ doc.addPage(); y=margin; y=drawTableHeader(y); }
+      if(i%2===1){ doc.setFillColor(247,249,251); doc.rect(margin-2, y-3.8, pageW-2*margin+4, 5.2, 'F'); }
+      doc.setFontSize(8.5);
+      doc.setTextColor(...ink); doc.text(r.label, margin, y);
+      doc.setTextColor(...(r.kind==='gas'?red:[26,111,181])); doc.text(r.kind.toUpperCase(), margin+110, y);
+      doc.setTextColor(...ink);
+      doc.text(r.eff!=null?r.eff.toFixed(2):'—', margin+130, y);
+      doc.text(r.kind==='liquid'&&r.dia?String(r.dia):'—', margin+165, y);
+      y+=5.2;
+    });
+    if(!rows.length){ doc.setFontSize(9); doc.setTextColor(...grey); doc.text('No segments traced yet.', margin, y); y+=5.2; doc.setTextColor(...ink); }
+
+    doc.setFontSize(7.5); doc.setTextColor(...grey);
+    doc.text('Generated by the VRF Pipe Length Measurement Tool · '+new Date().toLocaleString()+' · Lengths include +1m allowance per identified bend.', margin, pageH-8);
+    doc.setTextColor(...ink);
+  });
+
+  const fname = (state.fileName?state.fileName.replace(/\.pdf$/i,''):'VRF_Pipe_Lengths') + '_summary_report.pdf';
+  doc.save(fname);
+  toast('Exported '+fname);
+};
+
+/* ============================== Save / Load session ============================== */
+document.getElementById('saveBtn').onclick = ()=>{
+  const data = {
+    fileName: state.fileName, pageScales: state.pageScales, systems: state.systems,
+    nodes: state.nodes, edges: state.edges, nextId: state.nextId
+  };
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (state.fileName?state.fileName.replace(/\.pdf$/i,''):'vrf-session') + '_session.json';
+  a.click();
+  toast('Session saved. Re-upload the same PDF and load this file to resume.');
+};
+document.getElementById('loadInput').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const text = await file.text();
+  try{
+    const data = JSON.parse(text);
+    state.pageScales = data.pageScales||{};
+    state.systems = data.systems||[];
+    state.nodes = data.nodes||[];
+    state.edges = data.edges||[];
+    state.nextId = data.nextId||1;
+    state.activeSystemId = state.systems[0]?state.systems[0].id:null;
+    renderSystemList(); renderResults(); renderLimitsPanel(); updateScaleInfo(); redrawOverlay();
+    toast('Session loaded. Make sure this matches the PDF you have open ('+(data.fileName||'unknown file')+').');
+  }catch(err){ toast('Could not read that session file.'); }
+  e.target.value='';
+});
+
+/* ============================== init ============================== */
+document.querySelector('.tool-btn[data-tool=select]').classList.add('active');
+renderSystemList(); renderResults(); renderLimitsPanel();
+</script>
+</body>
+</html>
