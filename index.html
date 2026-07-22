@@ -144,10 +144,14 @@
   #floatingBar button.cancel{background:#5a6472;}
   .toast{position:fixed;bottom:18px;right:18px;background:var(--navy);color:#fff;padding:9px 14px;border-radius:7px;font-size:12.5px;box-shadow:0 4px 14px rgba(0,0,0,.3);z-index:80;max-width:340px;}
   .footnote{font-size:10.5px;color:var(--muted);margin-top:10px;line-height:1.5;}
-  .archive-row{display:flex;flex-direction:column;gap:2px;padding:9px 10px;border:1px solid var(--border);border-radius:6px;margin-bottom:7px;cursor:pointer;transition:background .1s;}
-  .archive-row:hover{background:var(--blue-light);}
+  .archive-row{display:flex;flex-direction:column;gap:2px;padding:9px 10px;border:1px solid var(--border);border-radius:6px;margin-bottom:7px;transition:background .1s;}
+  .archive-row-top{display:flex;align-items:flex-start;gap:8px;}
+  .archive-row-main{flex:1;min-width:0;cursor:pointer;border-radius:5px;margin:-4px -5px;padding:4px 5px;transition:background .1s;}
+  .archive-row-main:hover{background:var(--blue-light);}
   .archive-row .fn{font-size:12px;color:var(--text);font-weight:600;word-break:break-all;}
   .archive-row .meta{font-size:10.5px;color:var(--muted);}
+  .archive-del-btn{flex-shrink:0;background:transparent;border:1px solid var(--border);color:#aab4c0;border-radius:5px;padding:4px 7px;font-size:12px;cursor:pointer;line-height:1;}
+  .archive-del-btn:hover{background:#fdecea;border-color:#f3c2bd;color:var(--warn);}
   ::-webkit-scrollbar{width:9px;height:9px;}
   ::-webkit-scrollbar-thumb{background:#c4ccd6;border-radius:5px;}
 </style>
@@ -421,18 +425,42 @@ async function loadArchive(){
     const files = (data||[]).filter(f=>f.name && f.id); // storage.list() also returns folder placeholders without an id
     if(!files.length){ listEl.textContent = 'No plans archived yet.'; return; }
     listEl.innerHTML = '';
+    const isHead = !!(currentUser && currentUser.role === 'head');
     files.forEach(f=>{
       const meta = parseArchiveName(f.name);
+      const path = ARCHIVE_PREFIX+'/'+f.name;
       const row = document.createElement('div');
       row.className = 'archive-row';
-      row.innerHTML = `<div class="fn">${meta.original}</div><div class="meta">Uploaded by ${meta.uploader}${meta.date?(' · '+meta.date.toLocaleString()):''}</div>`;
-      row.onclick = async ()=>{
+      row.innerHTML = `<div class="archive-row-top">
+        <div class="archive-row-main">
+          <div class="fn">${meta.original}</div>
+          <div class="meta">Uploaded by ${meta.uploader}${meta.date?(' · '+meta.date.toLocaleString()):''}</div>
+        </div>
+        ${isHead ? `<button type="button" class="archive-del-btn" title="Delete this archived plan">🗑</button>` : ''}
+      </div>`;
+      row.querySelector('.archive-row-main').onclick = async ()=>{
         try{
-          const { data: signed, error: sErr } = await sb.storage.from(ARCHIVE_BUCKET).createSignedUrl(ARCHIVE_PREFIX+'/'+f.name, 3600);
+          const { data: signed, error: sErr } = await sb.storage.from(ARCHIVE_BUCKET).createSignedUrl(path, 3600);
           if(sErr) throw sErr;
           window.open(signed.signedUrl, '_blank');
         }catch(e){ toast('Could not open this file: '+(e.message||e), 4000); }
       };
+      if(isHead){
+        const delBtn = row.querySelector('.archive-del-btn');
+        delBtn.onclick = async (e)=>{
+          e.stopPropagation();
+          const ok = await confirmModal('Delete Archived Plan', `Delete "${meta.original}" (uploaded by ${meta.uploader})? This permanently removes the file from the archive and cannot be undone.`);
+          if(!ok) return;
+          try{
+            const { error: delErr } = await sb.storage.from(ARCHIVE_BUCKET).remove([path]);
+            if(delErr) throw delErr;
+            toast('Archived plan deleted.');
+            loadArchive();
+          }catch(err){
+            toast('Could not delete this plan: '+(err.message||err), 4000);
+          }
+        };
+      }
       listEl.appendChild(row);
     });
   }catch(e){
