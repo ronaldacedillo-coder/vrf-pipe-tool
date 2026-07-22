@@ -368,9 +368,6 @@ function enterApp(){
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('userName').textContent = currentUser.name || currentUser.email;
   document.getElementById('userRole').textContent = getRoleLabel(currentUser.role);
-  document.getElementById('archiveFootnote').textContent = currentUser.role==='head'
-    ? 'Every plan uploaded in this tool is automatically archived here for audit. As Commercial AC Head, you can see and download every user\'s uploads. Click a row to download the original PDF.'
-    : 'Every plan uploaded in this tool is automatically archived here for audit. You can see and download the plans you\'ve uploaded yourself. Click a row to download the original PDF.';
 }
 
 async function checkExistingSession(){
