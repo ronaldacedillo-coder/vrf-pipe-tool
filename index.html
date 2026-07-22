@@ -228,7 +228,7 @@
         <div class="tab" data-tab="results">Results</div>
         <div class="tab" data-tab="limits">Design Limits</div>
         <div class="tab" data-tab="export">Export</div>
-        <div class="tab" data-tab="archive" id="archiveTabBtn" style="display:none;">Archive</div>
+        <div class="tab" data-tab="archive" id="archiveTabBtn">Archive</div>
       </div>
 
       <div class="tabpanel active" id="tab-trace">
@@ -279,7 +279,7 @@
       <div class="tabpanel" id="tab-archive">
         <div class="card">
           <h3>Archived Mechanical Plans</h3>
-          <div class="footnote" style="margin-bottom:8px;">Every plan uploaded in this tool is automatically archived here for audit — visible only to the Commercial AC Head. Click a row to download the original PDF.</div>
+          <div class="footnote" id="archiveFootnote" style="margin-bottom:8px;">Every plan uploaded in this tool is automatically archived here for audit. Click a row to download the original PDF.</div>
           <button class="btn sm secondary" id="archiveRefreshBtn" style="margin-bottom:8px;">↻ Refresh</button>
           <div id="archiveList" style="font-size:12px;color:var(--muted);">Not loaded yet.</div>
         </div>
@@ -368,7 +368,9 @@ function enterApp(){
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('userName').textContent = currentUser.name || currentUser.email;
   document.getElementById('userRole').textContent = getRoleLabel(currentUser.role);
-  document.getElementById('archiveTabBtn').style.display = currentUser.role==='head' ? '' : 'none';
+  document.getElementById('archiveFootnote').textContent = currentUser.role==='head'
+    ? 'Every plan uploaded in this tool is automatically archived here for audit. As Commercial AC Head, you can see and download every user\'s uploads. Click a row to download the original PDF.'
+    : 'Every plan uploaded in this tool is automatically archived here for audit. You can see and download the plans you\'ve uploaded yourself. Click a row to download the original PDF.';
 }
 
 async function checkExistingSession(){
