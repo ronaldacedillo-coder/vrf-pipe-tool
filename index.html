@@ -7,6 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --navy:#0b2545; --blue:#1461b0; --blue-light:#e8f1fb; --accent:#e8730a;
@@ -26,6 +27,27 @@
   #brandBadge svg{display:block;}
   #brandBadge span{font-size:11.5px;font-weight:700;color:#fff;letter-spacing:.2px;font-family:"Segoe UI",Roboto,Arial,sans-serif;}
   header .grow{flex:1;}
+  #loginScreen{position:fixed;inset:0;background:linear-gradient(160deg,var(--navy),#123a68);display:flex;align-items:center;justify-content:center;z-index:100;}
+  #loginScreen.hidden{display:none;}
+  .login-card{background:var(--panel);border-radius:12px;width:360px;max-width:90vw;padding:26px 26px 22px;box-shadow:0 20px 60px rgba(0,0,0,.35);}
+  .login-card .mark{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+  .login-card h1{font-size:17px;margin:0;color:var(--navy);}
+  .login-card .sub{font-size:12px;color:var(--muted);margin:2px 0 18px;}
+  .login-field{margin-bottom:12px;}
+  .login-field label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:4px;}
+  .login-field input{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;}
+  .login-field input:focus{outline:2px solid var(--blue);outline-offset:1px;}
+  .login-btn{width:100%;background:var(--blue);color:#fff;border:none;border-radius:6px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;margin-top:4px;}
+  .login-btn:hover{background:#0f4d8c;}
+  .login-btn:disabled{opacity:.6;cursor:default;}
+  .login-error{background:#fdecea;color:#c0392b;border:1px solid #f3c2bd;border-radius:6px;padding:8px 10px;font-size:11.5px;line-height:1.4;margin-bottom:12px;display:none;}
+  .login-hint{font-size:10.5px;color:var(--muted);margin-top:14px;text-align:center;}
+  #app.hidden{display:none;}
+  #userBadge{display:flex;align-items:center;gap:8px;font-size:11.5px;color:#dfe8f5;border-left:1px solid rgba(255,255,255,.2);padding-left:12px;margin-left:2px;}
+  #userBadge .name{font-weight:600;color:#fff;}
+  #userBadge .role{color:#9db4d3;}
+  #signOutBtn{background:transparent;color:#cfe0f5;border:1px solid rgba(255,255,255,.25);border-radius:5px;padding:4px 9px;font-size:11px;cursor:pointer;}
+  #signOutBtn:hover{background:rgba(255,255,255,.1);}
   .btn{background:var(--blue);color:#fff;border:none;border-radius:5px;padding:6px 11px;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;}
   .btn:hover{background:#0f4d8c;}
   .btn.secondary{background:#33507a;}
@@ -121,12 +143,34 @@
   #floatingBar button.cancel{background:#5a6472;}
   .toast{position:fixed;bottom:18px;right:18px;background:var(--navy);color:#fff;padding:9px 14px;border-radius:7px;font-size:12.5px;box-shadow:0 4px 14px rgba(0,0,0,.3);z-index:80;max-width:340px;}
   .footnote{font-size:10.5px;color:var(--muted);margin-top:10px;line-height:1.5;}
+  .archive-row{display:flex;flex-direction:column;gap:2px;padding:9px 10px;border:1px solid var(--border);border-radius:6px;margin-bottom:7px;cursor:pointer;transition:background .1s;}
+  .archive-row:hover{background:var(--blue-light);}
+  .archive-row .fn{font-size:12px;color:var(--text);font-weight:600;word-break:break-all;}
+  .archive-row .meta{font-size:10.5px;color:var(--muted);}
   ::-webkit-scrollbar{width:9px;height:9px;}
   ::-webkit-scrollbar-thumb{background:#c4ccd6;border-radius:5px;}
 </style>
 </head>
 <body>
-<div id="app">
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="mark">
+      <svg width="20" height="20" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect x="20" y="65" width="20" height="20" fill="#14B8A6" opacity="1"></rect>
+        <rect x="45" y="45" width="20" height="20" fill="#14B8A6" opacity="0.72"></rect>
+        <rect x="70" y="25" width="20" height="20" fill="#14B8A6" opacity="0.45"></rect>
+      </svg>
+      <h1>VRF Pipe Length Measurement Tool</h1>
+    </div>
+    <div class="sub">Midea Building Technologies · sign in with your MBT Pipeline account</div>
+    <div class="login-error" id="loginError"></div>
+    <div class="login-field"><label>Email</label><input type="text" id="loginUsername" autocomplete="username" placeholder="Enter your work email" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="login-field"><label>Password</label><input type="password" id="loginPassword" autocomplete="current-password" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">Sign In</button>
+    <div class="login-hint">Uses the same account as the MBT Pipeline app. Contact your Commercial AC Head to reset your password.</div>
+  </div>
+</div>
+<div id="app" class="hidden">
   <header>
     <div>
       <h1>VRF Pipe Length Measurement Tool</h1>
@@ -150,6 +194,10 @@
     <button class="btn secondary" id="saveBtn" style="display:none;">💾 Save Session</button>
     <label class="btn secondary" for="loadInput" style="display:none;" id="loadBtnLabel">📂 Load Session</label>
     <input type="file" id="loadInput" accept="application/json">
+    <div id="userBadge">
+      <div><span class="name" id="userName">—</span> <span class="role" id="userRole">—</span></div>
+      <button id="signOutBtn">Sign Out</button>
+    </div>
   </header>
   <div id="disclaimerBar">⚠️ This tool is provided solely to assist in measuring refrigerant gas and liquid pipe lengths for Midea Building Technologies VRF systems from uploaded mechanical plans. Results depend on user-supplied scale calibration and manual tracing accuracy — always verify against actual site conditions before finalizing pipe or kit selection. Midea Building Technologies / Concepcion Midea Inc. assumes no liability for inaccuracies arising from the use of this tool.</div>
   <div id="main">
@@ -178,6 +226,7 @@
         <div class="tab" data-tab="results">Results</div>
         <div class="tab" data-tab="limits">Design Limits</div>
         <div class="tab" data-tab="export">Export</div>
+        <div class="tab" data-tab="archive" id="archiveTabBtn" style="display:none;">Archive</div>
       </div>
 
       <div class="tabpanel active" id="tab-trace">
@@ -224,6 +273,15 @@
           <div class="footnote">Excel export includes every traced segment (system, from, to, type, traced length, bend count, bend allowance, total length, diameter) plus a per-system summary against the design-limit table. Every reported length already includes +1m per identified bend (elbow/fitting allowance). The annotated PDF export overlays your traced lines, node markers, and length labels onto a copy of the uploaded plan, page by page.</div>
         </div>
       </div>
+
+      <div class="tabpanel" id="tab-archive">
+        <div class="card">
+          <h3>Archived Mechanical Plans</h3>
+          <div class="footnote" style="margin-bottom:8px;">Every plan uploaded in this tool is automatically archived here for audit — visible only to the Commercial AC Head. Click a row to download the original PDF.</div>
+          <button class="btn sm secondary" id="archiveRefreshBtn" style="margin-bottom:8px;">↻ Refresh</button>
+          <div id="archiveList" style="font-size:12px;color:var(--muted);">Not loaded yet.</div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -242,6 +300,146 @@
 
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+/* ============================== AUTH (shared with MBT Pipeline) ============================== */
+const SUPABASE_URL = 'https://kqcxwykhhwlodsbpbqnt.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_s0pb4L5aYaexHPRWnbLQhw_jYEpMcf6';
+const sb = (typeof supabase!=='undefined' && supabase && supabase.createClient) ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+let currentUser = null;
+
+function getRoleLabel(r){ return {head:'Commercial AC Head', nsm:'National Sales Manager', se:'Sales Engineer', pm:'MBT Product Manager', director:'HVAC Director'}[r] || r; }
+function loginEmail(input){ const v=(input||'').trim().toLowerCase(); return v.includes('@') ? v : v+'@mbt.ph'; }
+function safeSlug(s){ return String(s||'').replace(/[^a-zA-Z0-9._-]/g,'_'); }
+
+function showLoginError(msg){
+  const el = document.getElementById('loginError');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+async function doLogin(){
+  const username = document.getElementById('loginUsername').value.trim().toLowerCase();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  errEl.style.display = 'none';
+  if(!sb){
+    showLoginError('Cannot reach the server — the app could not load its online components. Check your internet connection, then reload the page (Ctrl/Cmd+Shift+R).');
+    return;
+  }
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  const { data, error } = await sb.auth.signInWithPassword({ email: loginEmail(username), password });
+  if(error){
+    showLoginError('Login failed: '+error.message);
+    document.getElementById('loginPassword').value = '';
+    btn.disabled = false; btn.textContent = 'Sign In';
+    return;
+  }
+  const { data: profile, error: profileErr } = await sb.from('user_profiles').select('*').eq('id', data.user.id).single();
+  if(!profile){
+    showLoginError('Profile not found. Please contact your Commercial AC Head. ('+(profileErr?.message||'no profile row')+')');
+    document.getElementById('loginPassword').value = '';
+    btn.disabled = false; btn.textContent = 'Sign In';
+    await sb.auth.signOut();
+    return;
+  }
+  currentUser = { id: data.user.id, email: data.user.email, name: profile.name, role: profile.role };
+  btn.disabled = false; btn.textContent = 'Sign In';
+  enterApp();
+}
+
+async function doLogout(){
+  if(sb) await sb.auth.signOut();
+  currentUser = null;
+  // clear in-memory work so the next person to sign in on this browser doesn't see it
+  state.systems.length = 0; state.nodes.length = 0; state.edges.length = 0;
+  state.pageScales = {}; state.activeSystemId = null; state.pdfDoc = null; state.fileName = null;
+  historyStack.length = 0; redoStack.length = 0;
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('loginUsername').value = '';
+  document.getElementById('loginPassword').value = '';
+  document.getElementById('loginError').style.display = 'none';
+}
+
+function enterApp(){
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('userName').textContent = currentUser.name || currentUser.email;
+  document.getElementById('userRole').textContent = getRoleLabel(currentUser.role);
+  document.getElementById('archiveTabBtn').style.display = currentUser.role==='head' ? '' : 'none';
+}
+
+async function checkExistingSession(){
+  if(!sb){
+    showLoginError('Cannot reach the server — the app could not load its online components. Check your internet connection, then reload the page (Ctrl/Cmd+Shift+R).');
+    return;
+  }
+  const { data } = await sb.auth.getSession();
+  if(!data || !data.session) return;
+  const { data: profile } = await sb.from('user_profiles').select('*').eq('id', data.session.user.id).single();
+  if(!profile) return;
+  currentUser = { id: data.session.user.id, email: data.session.user.email, name: profile.name, role: profile.role };
+  enterApp();
+}
+
+document.getElementById('signOutBtn').onclick = doLogout;
+checkExistingSession();
+
+/* ============================== Archive (audit) ============================== */
+const ARCHIVE_BUCKET = 'tactical-attachments';
+const ARCHIVE_PREFIX = 'vrf-plans';
+
+async function archivePlanToCloud(file){
+  if(!sb || !currentUser || !file) return;
+  try{
+    const path = ARCHIVE_PREFIX+'/'+Date.now()+'__'+safeSlug(currentUser.name||currentUser.email)+'__'+safeSlug(file.name);
+    const { error } = await sb.storage.from(ARCHIVE_BUCKET).upload(path, file, { upsert: false });
+    if(error) throw error;
+    toast('Plan archived for audit (Commercial AC Head can retrieve it later).');
+  }catch(e){
+    toast('Could not archive this plan for audit: '+(e.message||e), 4000);
+  }
+}
+
+function parseArchiveName(name){
+  // "<timestamp>__<uploaderSlug>__<originalFileNameSlug>"
+  const parts = name.split('__');
+  const ts = parseInt(parts[0], 10);
+  const uploader = parts.length>2 ? parts[1].replace(/_/g,' ') : 'Unknown';
+  const original = parts.length>2 ? parts.slice(2).join('__') : name;
+  return { date: isNaN(ts)?null:new Date(ts), uploader, original };
+}
+
+async function loadArchive(){
+  const listEl = document.getElementById('archiveList');
+  if(!sb){ listEl.textContent = 'Cannot reach the server.'; return; }
+  listEl.textContent = 'Loading…';
+  try{
+    const { data, error } = await sb.storage.from(ARCHIVE_BUCKET).list(ARCHIVE_PREFIX, { limit: 500, sortBy: { column: 'created_at', order: 'desc' } });
+    if(error) throw error;
+    const files = (data||[]).filter(f=>f.name && f.id); // storage.list() also returns folder placeholders without an id
+    if(!files.length){ listEl.textContent = 'No plans archived yet.'; return; }
+    listEl.innerHTML = '';
+    files.forEach(f=>{
+      const meta = parseArchiveName(f.name);
+      const row = document.createElement('div');
+      row.className = 'archive-row';
+      row.innerHTML = `<div class="fn">${meta.original}</div><div class="meta">Uploaded by ${meta.uploader}${meta.date?(' · '+meta.date.toLocaleString()):''}</div>`;
+      row.onclick = async ()=>{
+        try{
+          const { data: signed, error: sErr } = await sb.storage.from(ARCHIVE_BUCKET).createSignedUrl(ARCHIVE_PREFIX+'/'+f.name, 3600);
+          if(sErr) throw sErr;
+          window.open(signed.signedUrl, '_blank');
+        }catch(e){ toast('Could not open this file: '+(e.message||e), 4000); }
+      };
+      listEl.appendChild(row);
+    });
+  }catch(e){
+    listEl.textContent = 'Could not load the archive: '+(e.message||e);
+  }
+}
+document.getElementById('archiveRefreshBtn').onclick = loadArchive;
+document.getElementById('archiveTabBtn').addEventListener('click', loadArchive);
 
 /* ============================== STATE ============================== */
 const state = {
@@ -539,6 +737,7 @@ fileInput.addEventListener('change', async (e)=>{
     document.getElementById('loadBtnLabel').style.display = 'inline-flex';
     await renderPage();
     toast('Plan loaded: ' + file.name + ' (' + state.numPages + ' page' + (state.numPages>1?'s':'') + ')');
+    archivePlanToCloud(file);
   }catch(err){
     console.error(err);
     toast('Could not read that PDF: ' + err.message, 4000);
