@@ -259,6 +259,7 @@
         <div class="card">
           <h3>This Page's Scale</h3>
           <div id="scaleInfo" style="font-size:11.5px;color:var(--muted);">Not calibrated yet.</div>
+          <button class="btn sm secondary" id="scaleByRatioBtn" style="width:100%;justify-content:center;margin-top:8px;">📐 Use Plan's Printed Scale (e.g. 1:150)</button>
         </div>
       </div>
 
@@ -981,16 +982,39 @@ function pageLengthToMeters(pageSpaceLength, pageNum){
 function updateScaleInfo(){
   const s = getScaleObj(state.currentPage);
   if(s.unitsPerMeter){
-    scaleInfo.innerHTML = `<b style="color:var(--ok)">Calibrated</b> — ${s.refMeters}m = ${s.unitsPerMeter.toFixed(2)} pt<br><span style="color:var(--muted)">(1m ≈ ${s.unitsPerMeter.toFixed(1)} drawing pt at 100% zoom)</span>`;
+    if(s.fromPrintedScale){
+      scaleInfo.innerHTML = `<b style="color:var(--ok)">Calibrated</b> — from printed scale 1:${s.scaleRatio}<br><span style="color:var(--muted)">(1m ≈ ${s.unitsPerMeter.toFixed(1)} drawing pt at 100% zoom)</span>`;
+    } else {
+      scaleInfo.innerHTML = `<b style="color:var(--ok)">Calibrated</b> — ${s.refMeters}m = ${s.unitsPerMeter.toFixed(2)} pt<br><span style="color:var(--muted)">(1m ≈ ${s.unitsPerMeter.toFixed(1)} drawing pt at 100% zoom)</span>`;
+    }
   } else {
-    scaleInfo.innerHTML = 'Not calibrated for this page yet. Use "Calibrate Scale" and click two points a known distance apart (e.g. a dimension line or wall).';
+    scaleInfo.innerHTML = 'Not calibrated for this page yet. Use "Calibrate Scale" and click two points a known distance apart (e.g. a dimension line or wall), or use the plan\'s printed scale below.';
   }
 }
+
+/* ---- Calibrate directly from the plan's printed scale ratio (e.g. "SCALE 1:150" in the title block) ----
+   PDF page geometry is always expressed in points, and 1 point is always exactly 1/72 inch, regardless
+   of zoom. So if this page is an unscaled, true-to-size plot (not "shrunk to fit" when exported), 1 real
+   meter at a printed scale of 1:S is drawn at (1000/S)mm = (2834.645/S) points on this PDF page — no
+   on-screen reference points need to be clicked at all. */
+async function calibrateByPrintedScale(){
+  if(!state.pdfDoc){ toast('Upload a plan PDF first.'); return; }
+  const res = await formModal('Calibrate by Printed Scale', [
+    {name:'ratio', label:'Scale denominator shown on the plan (e.g. enter 150 for "1:150")', type:'number', default:'', step:'1', placeholder:'e.g. 150'}
+  ]);
+  if(!res || !res.ratio || isNaN(res.ratio) || res.ratio<=0) return;
+  const unitsPerMeter = 2834.645 / res.ratio;
+  state.pageScales[state.currentPage] = { unitsPerMeter, refMeters: null, calibA: null, calibB: null, fromPrintedScale: true, scaleRatio: res.ratio };
+  toast('Page '+state.currentPage+' calibrated from printed scale 1:'+res.ratio+'. Spot-check against a known dimension on the plan if you can — this assumes the PDF wasn\'t resized when it was exported.', 5000);
+  updateScaleInfo();
+  renderResults();
+}
+document.getElementById('scaleByRatioBtn').onclick = calibrateByPrintedScale;
 
 /* ============================== Tool selection ============================== */
 const toolHints = {
   'select': 'Click a node or traced line to select it. Scroll the canvas to pan.',
-  'calibrate': 'Click two points on the drawing that are a known real-world distance apart (a dimension line, door width, etc.), then enter that distance.',
+  'calibrate': 'Click two points on the drawing that are a known real-world distance apart (a dimension line, door width, etc.), then enter that distance. Or, if the plan\'s title block shows a printed scale (e.g. "1:150"), use the "Use Plan\'s Printed Scale" button below instead — no clicking needed.',
   'add-odu': 'Click on the outdoor unit location to place an ODU marker for the active VRF system.',
   'add-branch': 'Click on a branch/joint symbol to place a Branch marker for the active VRF system.',
   'add-idu': 'Click on an indoor unit location to place an IDU marker for the active VRF system.',
