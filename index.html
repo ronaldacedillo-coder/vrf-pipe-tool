@@ -1008,6 +1008,19 @@ async function calibrateByPrintedScale(){
   toast('Page '+state.currentPage+' calibrated from printed scale 1:'+res.ratio+'. Spot-check against a known dimension on the plan if you can — this assumes the PDF wasn\'t resized when it was exported.', 5000);
   updateScaleInfo();
   renderResults();
+  // If the "Calibrate Scale" tool was still selected (e.g. the user opened it, then used this
+  // button instead of clicking two points), disarm it — otherwise the next two clicks on the
+  // canvas get silently captured as a NEW two-point calibration and re-open that dialog, which
+  // looks like the app "forgot" the calibration that was just set here.
+  if(state.currentTool==='calibrate'){
+    calibPoints = [];
+    state.currentTool = 'select';
+    document.querySelectorAll('.tool-btn').forEach(b=>b.classList.remove('active'));
+    const selectBtn = document.querySelector('.tool-btn[data-tool=select]');
+    if(selectBtn) selectBtn.classList.add('active');
+    toolHint.textContent = toolHints['select'];
+    overlayCanvas.style.cursor = 'default';
+  }
 }
 document.getElementById('scaleByRatioBtn').onclick = calibrateByPrintedScale;
 
